@@ -39,6 +39,16 @@ export const USER_STORAGE_KEY = "auth_user";
 // from localStorage.
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://146.190.141.95";
 
+// Uploaded images (e.g. an event's first_image) can come back as a
+// server-relative path (e.g. "/media/events/xyz.jpg") rather than an
+// absolute URL — the browser would otherwise try to load that against the
+// frontend's own origin and fail. This resolves it against the API host.
+export function resolveMediaUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (/^(https?:)?\/\//i.test(path) || path.startsWith("data:")) return path;
+  return `${API_BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
+}
+
 export type AuthProfile = {
   id: number;
   name: string | null;
@@ -354,7 +364,7 @@ export type CreateEventPayload = {
   city: string | null;
   min_age: number | null;
   max_age: number | null;
-  images: string[];
+  images: File[];
 };
 
 export async function createEvent(payload: CreateEventPayload, token?: string | null): Promise<OrganizerEvent> {
@@ -375,7 +385,7 @@ export async function createEvent(payload: CreateEventPayload, token?: string | 
   if (payload.city) body.append("city", payload.city);
   if (payload.min_age != null) body.append("min_age", String(payload.min_age));
   if (payload.max_age != null) body.append("max_age", String(payload.max_age));
-  for (const image of payload.images) body.append("images", image);
+  for (const image of payload.images) body.append("images", image, image.name);
 
   const res = await fetch(`${API_BASE_URL}/api/v1/events/create/`, {
     method: "POST",
