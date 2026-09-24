@@ -167,9 +167,12 @@ export default function MyEventsPage() {
                   </div>
                 </div>
                 <div className="p-4 flex flex-row sm:flex-col gap-2 justify-center border-t sm:border-t-0 sm:border-l border-border">
-                  <button className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-secondary">
+                  <Link
+                    href={`/organizer/events/${e.id}/edit`}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-secondary"
+                  >
                     <Edit2 size={12} /> Edit
-                  </button>
+                  </Link>
                   <button className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-secondary">
                     <BarChart3 size={12} /> Stats
                   </button>

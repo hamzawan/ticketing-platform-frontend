@@ -44,9 +44,22 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://146.190.141.95"
 // absolute URL — the browser would otherwise try to load that against the
 // frontend's own origin and fail. This resolves it against the API host.
 export function resolveMediaUrl(path: string | null | undefined): string | null {
-  if (!path) return null;
+  if (!path || typeof path !== "string") return null;
   if (/^(https?:)?\/\//i.test(path) || path.startsWith("data:")) return path;
   return `${API_BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
+}
+
+// An event's `images` entries aren't guaranteed to be plain strings — some
+// endpoints wrap each image as an object (e.g. { id, image }) instead. This
+// pulls out whatever URL is actually there and resolves it the same way.
+export function extractImageUrl(image: unknown): string | null {
+  if (typeof image === "string") return resolveMediaUrl(image);
+  if (image && typeof image === "object") {
+    const { image: imageField, url, file } = image as Record<string, unknown>;
+    const candidate = imageField ?? url ?? file;
+    if (typeof candidate === "string") return resolveMediaUrl(candidate);
+  }
+  return null;
 }
 
 export type AuthProfile = {
@@ -289,7 +302,8 @@ export type OrganizerEvent = {
   min_age: number | null;
   max_age: number | null;
   status: string;
-  images: string[];
+  // Not guaranteed to be plain strings — see extractImageUrl().
+  images: unknown[];
   ticket_types: EventTicketType[];
   sessions: unknown[];
   created_by: number;
@@ -367,12 +381,13 @@ export type CreateEventPayload = {
   images: File[];
 };
 
-export async function createEvent(payload: CreateEventPayload, token?: string | null): Promise<OrganizerEvent> {
-  // Sent as multipart/form-data, not JSON: this endpoint accepts image
-  // uploads alongside the other fields, and a FastAPI route built with
-  // Form()/File() params reads the whole body as null when it receives
-  // application/json instead — which is exactly the "field required" /
-  // "input": null validation error this fixes.
+// Sent as multipart/form-data, not JSON: this endpoint accepts image
+// uploads alongside the other fields, and a FastAPI route built with
+// Form()/File() params reads the whole body as null when it receives
+// application/json instead — which is exactly the "field required" /
+// "input": null validation error this fixes. Shared by create and update
+// since both send the same field set.
+function buildEventFormData(payload: CreateEventPayload): FormData {
   const body = new FormData();
   body.append("name", payload.name);
   body.append("venue", payload.venue);
@@ -386,18 +401,42 @@ export async function createEvent(payload: CreateEventPayload, token?: string | 
   if (payload.min_age != null) body.append("min_age", String(payload.min_age));
   if (payload.max_age != null) body.append("max_age", String(payload.max_age));
   for (const image of payload.images) body.append("images", image, image.name);
+  return body;
+}
 
+export async function createEvent(payload: CreateEventPayload, token?: string | null): Promise<OrganizerEvent> {
   const res = await fetch(`${API_BASE_URL}/api/v1/events/create/`, {
     method: "POST",
     headers: {
       Accept: "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body,
+    body: buildEventFormData(payload),
   });
 
   if (!res.ok) {
     throw new ApiError(await readErrorDetail(res, "Failed to create event. Please try again."), res.status);
+  }
+
+  return res.json() as Promise<OrganizerEvent>;
+}
+
+export async function updateEvent(
+  eventId: string,
+  payload: CreateEventPayload,
+  token?: string | null,
+): Promise<OrganizerEvent> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/events/${eventId}/update/`, {
+    method: "PUT",
+    headers: {
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: buildEventFormData(payload),
+  });
+
+  if (!res.ok) {
+    throw new ApiError(await readErrorDetail(res, "Failed to update event. Please try again."), res.status);
   }
 
   return res.json() as Promise<OrganizerEvent>;
