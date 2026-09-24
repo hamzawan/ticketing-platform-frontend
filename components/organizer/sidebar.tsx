@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   LayoutDashboard,
@@ -13,6 +13,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
+import { clearSession } from "@/lib/auth";
 
 const NAV_ITEMS = [
   { href: "/organizer", label: "Dashboard", Icon: LayoutDashboard },
@@ -21,12 +22,27 @@ const NAV_ITEMS = [
   { href: "/organizer/refunds", label: "Refunds", Icon: RefreshCw },
 ];
 
-function isActive(pathname: string, href: string) {
+function matchesHref(pathname: string, href: string) {
   if (href === "/organizer") return pathname === "/organizer";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+// Several hrefs can match the same pathname (e.g. both "/organizer/events"
+// and "/organizer/events/create" match "/organizer/events/create") — only
+// the longest (most specific) match should be highlighted.
+function getActiveHref(pathname: string): string | null {
+  let best: string | null = null;
+  for (const { href } of NAV_ITEMS) {
+    if (matchesHref(pathname, href) && (best === null || href.length > best.length)) {
+      best = href;
+    }
+  }
+  return best;
+}
+
 function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+  const activeHref = getActiveHref(pathname);
+
   return (
     <nav className="flex-1 p-2.5 space-y-0.5 overflow-y-auto">
       {NAV_ITEMS.map(({ href, label, Icon }) => (
@@ -35,7 +51,7 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
           href={href}
           onClick={onNavigate}
           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-left ${
-            isActive(pathname, href)
+            href === activeHref
               ? "bg-primary text-white"
               : "text-muted-foreground hover:text-foreground hover:bg-secondary"
           }`}
@@ -64,17 +80,25 @@ function Brand() {
   );
 }
 
-function SwitchPortalLink({ onNavigate }: { onNavigate?: () => void }) {
+function SignOutButton({ onNavigate }: { onNavigate?: () => void }) {
+  const router = useRouter();
+
+  function handleSignOut() {
+    clearSession();
+    onNavigate?.();
+    router.push("/");
+  }
+
   return (
     <div className="p-2.5 border-t border-border">
-      <Link
-        href="/"
-        onClick={onNavigate}
+      <button
+        type="button"
+        onClick={handleSignOut}
         className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
       >
         <LogOut size={15} />
-        Switch Portal
-      </Link>
+        Sign Out
+      </button>
     </div>
   );
 }
@@ -88,7 +112,7 @@ export function OrganizerSidebar() {
       <aside className="hidden lg:flex w-52 flex-shrink-0 bg-card border-r border-border flex-col">
         <Brand />
         <NavLinks pathname={pathname} />
-        <SwitchPortalLink />
+        <SignOutButton />
       </aside>
 
       <div className="lg:hidden flex items-center justify-between gap-2 p-3 bg-card border-b border-border">
@@ -122,7 +146,7 @@ export function OrganizerSidebar() {
               </button>
             </div>
             <NavLinks pathname={pathname} onNavigate={() => setOpen(false)} />
-            <SwitchPortalLink onNavigate={() => setOpen(false)} />
+            <SignOutButton onNavigate={() => setOpen(false)} />
           </aside>
         </div>
       )}

@@ -4,8 +4,23 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowLeft, Check, Plus, X } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import {
+  ACCESS_TOKEN_STORAGE_KEY,
+  ApiError,
+  createEvent,
+  publishEvent,
+  type CreateEventPayload,
+  type OrganizerEvent,
+} from "@/lib/api";
 
 type TicketDraft = { name: string; price: string; quantity: string };
+
+function parseAgeInput(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const n = Number.parseInt(trimmed, 10);
+  return Number.isFinite(n) ? n : null;
+}
 
 const STEPS = ["Event Details", "Ticket Types", "Review & Publish"];
 
@@ -19,13 +34,100 @@ export function CreateEventForm() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [published, setPublished] = useState(false);
-  const [form, setForm] = useState({ name: "", date: "", time: "", venue: "", city: "", description: "" });
+  const [form, setForm] = useState({
+    name: "",
+    date: "",
+    time: "",
+    endTime: "",
+    venue: "",
+    city: "",
+    description: "",
+    minAge: "",
+    maxAge: "",
+  });
   const [tickets, setTickets] = useState<TicketDraft[]>([{ name: "General Admission", price: "", quantity: "" }]);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [createdEvent, setCreatedEvent] = useState<OrganizerEvent | null>(null);
 
   const addTicket = () => setTickets((t) => [...t, { name: "", price: "", quantity: "" }]);
   const removeTicket = (i: number) => setTickets((t) => t.filter((_, idx) => idx !== i));
   const updateTicket = (i: number, patch: Partial<TicketDraft>) =>
     setTickets((prev) => prev.map((t, idx) => (idx === i ? { ...t, ...patch } : t)));
+
+  // "Review & Publish" (step 2 → 3): creates the event via the Create API,
+  // but does not publish it. The returned event's id is stored and reused
+  // by handlePublishEvent — the Create API is never called again from there.
+  async function handleCreateEvent() {
+    if (submitting) return;
+    setError(null);
+
+    if (!form.name.trim() || !form.venue.trim()) {
+      setError("Event name and venue are required.");
+      return;
+    }
+
+    const validTickets = tickets.filter((t) => t.name.trim());
+
+    if (validTickets.length > 0 && (!form.date || !form.time || !form.endTime)) {
+      setError("Event Date, Start Time, and End Time are required when ticket types are added.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload: CreateEventPayload = {
+        name: form.name.trim(),
+        venue: form.venue.trim(),
+        event_date: form.date || null,
+        start_time: form.time || null,
+        end_time: form.endTime || null,
+        ticket_types: validTickets.length
+          ? JSON.stringify(
+              validTickets.map((t) => ({
+                name: t.name.trim(),
+                price: t.price,
+                quantity: Number(t.quantity) || 0,
+              })),
+            )
+          : null,
+        sessions: null,
+        description: form.description.trim() || null,
+        city: form.city.trim() || null,
+        min_age: parseAgeInput(form.minAge),
+        max_age: parseAgeInput(form.maxAge),
+        images: [],
+      };
+
+      const token =
+        typeof window !== "undefined" ? window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) : null;
+      const created = await createEvent(payload, token);
+      setCreatedEvent(created);
+      setStep(3);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to create event. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  // "Publish Event" (step 3): publishes the already-created event by id.
+  async function handlePublishEvent() {
+    if (submitting || !createdEvent) return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      const token =
+        typeof window !== "undefined" ? window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) : null;
+      const publishedEvent = await publishEvent(createdEvent.id, token);
+      setCreatedEvent(publishedEvent);
+      setPublished(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to publish event. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   if (published) {
     return (
@@ -36,7 +138,7 @@ export function CreateEventForm() {
           </div>
           <h2 className="text-xl font-black font-(family-name:--font-display)">Event Published!</h2>
           <p className="text-sm text-muted-foreground">
-            {form.name || "Your event"} is now live and ready to sell tickets.
+            {createdEvent?.name || form.name || "Your event"} is now live and ready to sell tickets.
           </p>
           <button
             onClick={() => router.push("/organizer/events")}
@@ -108,18 +210,18 @@ export function CreateEventForm() {
               />
             </div>
           ))}
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">
+              Date
+            </label>
+            <input
+              type="date"
+              value={form.date}
+              onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))}
+              className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary transition-colors"
+            />
+          </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">
-                Date
-              </label>
-              <input
-                type="date"
-                value={form.date}
-                onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))}
-                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary transition-colors"
-              />
-            </div>
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">
                 Start Time
@@ -129,6 +231,45 @@ export function CreateEventForm() {
                 value={form.time}
                 onChange={(e) => setForm((p) => ({ ...p, time: e.target.value }))}
                 className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary transition-colors"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">
+                End Time
+              </label>
+              <input
+                type="time"
+                value={form.endTime}
+                onChange={(e) => setForm((p) => ({ ...p, endTime: e.target.value }))}
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary transition-colors"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">
+                Min Age
+              </label>
+              <input
+                type="number"
+                min={0}
+                value={form.minAge}
+                onChange={(e) => setForm((p) => ({ ...p, minAge: e.target.value }))}
+                placeholder="e.g. 18"
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">
+                Max Age
+              </label>
+              <input
+                type="number"
+                min={0}
+                value={form.maxAge}
+                onChange={(e) => setForm((p) => ({ ...p, maxAge: e.target.value }))}
+                placeholder="e.g. 60"
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground"
               />
             </div>
           </div>
@@ -208,18 +349,25 @@ export function CreateEventForm() {
           >
             <Plus size={14} /> Add Another Ticket Type
           </button>
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl px-4 py-3">
+              {error}
+            </div>
+          )}
           <div className="flex gap-3">
             <button
               onClick={() => setStep(1)}
-              className="flex-1 border border-border font-semibold py-3 rounded-xl hover:bg-secondary transition-colors text-sm"
+              disabled={submitting}
+              className="flex-1 border border-border font-semibold py-3 rounded-xl hover:bg-secondary transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
             >
               ← Back
             </button>
             <button
-              onClick={() => setStep(3)}
-              className="flex-1 bg-primary text-white font-semibold py-3 rounded-xl hover:bg-primary/90 transition-colors text-sm"
+              onClick={handleCreateEvent}
+              disabled={submitting}
+              className="flex-1 bg-primary text-white font-semibold py-3 rounded-xl hover:bg-primary/90 transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
             >
-              Review & Publish →
+              {submitting ? "Creating…" : "Review & Publish →"}
             </button>
           </div>
         </div>
@@ -236,6 +384,7 @@ export function CreateEventForm() {
             </div>
             <div className="text-xs text-muted-foreground">
               {form.date} {form.time && `· ${form.time}`}
+              {form.endTime && ` – ${form.endTime}`}
             </div>
             {form.description && <div className="text-xs text-muted-foreground">{form.description}</div>}
           </div>
@@ -255,18 +404,25 @@ export function CreateEventForm() {
                 </div>
               ))}
           </div>
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl px-4 py-3">
+              {error}
+            </div>
+          )}
           <div className="flex gap-3">
             <button
               onClick={() => setStep(2)}
-              className="flex-1 border border-border font-semibold py-3 rounded-xl hover:bg-secondary transition-colors text-sm"
+              disabled={submitting}
+              className="flex-1 border border-border font-semibold py-3 rounded-xl hover:bg-secondary transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
             >
               ← Back
             </button>
             <button
-              onClick={() => setPublished(true)}
-              className="flex-1 bg-emerald-500 text-white font-semibold py-3 rounded-xl hover:bg-emerald-600 transition-colors text-sm"
+              onClick={handlePublishEvent}
+              disabled={submitting}
+              className="flex-1 bg-emerald-500 text-white font-semibold py-3 rounded-xl hover:bg-emerald-600 transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
             >
-              ✓ Publish Event
+              {submitting ? "Publishing…" : "✓ Publish Event"}
             </button>
           </div>
         </div>
