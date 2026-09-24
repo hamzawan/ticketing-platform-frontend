@@ -10,6 +10,7 @@ import {
   ACCESS_TOKEN_STORAGE_KEY,
   formatEventDate,
   getMyEvents,
+  resolveMediaUrl,
   type MyEventListItem,
 } from "@/lib/api";
 
@@ -45,7 +46,7 @@ function toDisplayEvents(events: MyEventListItem[]): DisplayEvent[] {
     // covers this since revenue is always 0.
     revenue: 0,
     ticketTypeCount: e.ticket_types_count,
-    image: e.first_image ?? FALLBACK_IMAGE,
+    image: resolveMediaUrl(e.first_image) ?? FALLBACK_IMAGE,
   }));
 }
 
@@ -130,6 +131,9 @@ export default function MyEventsPage() {
                     alt={e.name}
                     className="w-full h-full object-cover"
                     style={{ height: "100%" }}
+                    onError={(ev) => {
+                      if (ev.currentTarget.src !== FALLBACK_IMAGE) ev.currentTarget.src = FALLBACK_IMAGE;
+                    }}
                   />
                 </div>
                 <div className="flex-1 p-4">

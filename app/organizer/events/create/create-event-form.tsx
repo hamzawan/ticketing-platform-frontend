@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { ArrowLeft, Check, Plus, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, Check, ImagePlus, Plus, X } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import {
   ACCESS_TOKEN_STORAGE_KEY,
@@ -46,6 +46,8 @@ export function CreateEventForm() {
     maxAge: "",
   });
   const [tickets, setTickets] = useState<TicketDraft[]>([{ name: "General Admission", price: "", quantity: "" }]);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdEvent, setCreatedEvent] = useState<OrganizerEvent | null>(null);
@@ -54,6 +56,33 @@ export function CreateEventForm() {
   const removeTicket = (i: number) => setTickets((t) => t.filter((_, idx) => idx !== i));
   const updateTicket = (i: number, patch: Partial<TicketDraft>) =>
     setTickets((prev) => prev.map((t, idx) => (idx === i ? { ...t, ...patch } : t)));
+
+  // Revoke the object URL used for the preview whenever it changes or the
+  // form unmounts, so we don't leak blob URLs.
+  useEffect(() => {
+    return () => {
+      if (imagePreview) URL.revokeObjectURL(imagePreview);
+    };
+  }, [imagePreview]);
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    e.target.value = "";
+    if (!file) return;
+    setImageFile(file);
+    setImagePreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+  }
+
+  function removeImage() {
+    setImageFile(null);
+    setImagePreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+  }
 
   // "Review & Publish" (step 2 → 3): creates the event via the Create API,
   // but does not publish it. The returned event's id is stored and reused
@@ -96,7 +125,7 @@ export function CreateEventForm() {
         city: form.city.trim() || null,
         min_age: parseAgeInput(form.minAge),
         max_age: parseAgeInput(form.maxAge),
-        images: [],
+        images: imageFile ? [imageFile] : [],
       };
 
       const token =
@@ -210,6 +239,34 @@ export function CreateEventForm() {
               />
             </div>
           ))}
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">
+              Event Image
+            </label>
+            {imagePreview ? (
+              <div className="relative w-full h-40 rounded-xl overflow-hidden border border-border bg-secondary">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imagePreview} alt="Event preview" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={removeImage}
+                  aria-label="Remove image"
+                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <label
+                htmlFor="event-image"
+                className="w-full border border-dashed border-border rounded-xl py-6 text-sm text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors flex flex-col items-center justify-center gap-2 cursor-pointer"
+              >
+                <ImagePlus size={18} />
+                Click to upload an image
+              </label>
+            )}
+            <input id="event-image" type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+          </div>
           <div>
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">
               Date
