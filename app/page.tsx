@@ -163,6 +163,7 @@ function InputField({
   onChange,
   icon: Icon,
   rightSlot,
+  error,
 }: {
   label: string;
   id: string;
@@ -172,6 +173,7 @@ function InputField({
   onChange: (v: string) => void;
   icon?: React.ElementType;
   rightSlot?: React.ReactNode;
+  error?: string;
 }) {
   return (
     <div className="space-y-1.5">
@@ -195,6 +197,7 @@ function InputField({
         />
         {rightSlot && <span className="absolute right-3 top-1/2 -translate-y-1/2">{rightSlot}</span>}
       </div>
+      {error && <p className="text-xs text-red-400">{error}</p>}
     </div>
   );
 }
@@ -312,6 +315,7 @@ export default function OrganizerAuthPage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const eyeBtn = (show: boolean, toggle: () => void) => (
     <button type="button" onClick={toggle} className="text-muted-foreground hover:text-foreground transition-colors">
@@ -325,12 +329,23 @@ export default function OrganizerAuthPage() {
     setForgotSent(false);
     setSignupSuccess(false);
     setError(null);
+    setFieldErrors({});
   }
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
     if (submitting) return;
     setError(null);
+    setFieldErrors({});
+
+    const requiredErrors: Record<string, string> = {};
+    if (!suEmail.trim()) requiredErrors.suEmail = "Required";
+    if (!suPw1) requiredErrors.suPw1 = "Required";
+    if (!suPw2) requiredErrors.suPw2 = "Required";
+    if (Object.keys(requiredErrors).length > 0) {
+      setFieldErrors(requiredErrors);
+      return;
+    }
 
     if (suPw1 !== suPw2) {
       setError("Passwords does not match");
@@ -361,6 +376,16 @@ export default function OrganizerAuthPage() {
     e.preventDefault();
     if (submitting) return;
     setError(null);
+    setFieldErrors({});
+
+    const requiredErrors: Record<string, string> = {};
+    if (!liEmail.trim()) requiredErrors.liEmail = "Required";
+    if (!liPw) requiredErrors.liPw = "Required";
+    if (Object.keys(requiredErrors).length > 0) {
+      setFieldErrors(requiredErrors);
+      return;
+    }
+
     setSubmitting(true);
     try {
       const data = await loginOrganizer({ email: liEmail, password: liPw });
@@ -457,6 +482,7 @@ export default function OrganizerAuthPage() {
                   value={suEmail}
                   onChange={setSuEmail}
                   icon={Mail}
+                  error={fieldErrors.suEmail}
                 />
                 {/* password1 */}
                 <InputField
@@ -468,6 +494,7 @@ export default function OrganizerAuthPage() {
                   onChange={setSuPw1}
                   icon={Lock}
                   rightSlot={eyeBtn(showSuPw1, () => setShowSuPw1((p) => !p))}
+                  error={fieldErrors.suPw1}
                 />
                 {/* password2 */}
                 <InputField
@@ -479,6 +506,7 @@ export default function OrganizerAuthPage() {
                   onChange={setSuPw2}
                   icon={Lock}
                   rightSlot={eyeBtn(showSuPw2, () => setShowSuPw2((p) => !p))}
+                  error={fieldErrors.suPw2}
                 />
 
                 <button
@@ -558,6 +586,7 @@ export default function OrganizerAuthPage() {
                   value={liEmail}
                   onChange={setLiEmail}
                   icon={Mail}
+                  error={fieldErrors.liEmail}
                 />
                 {/* password */}
                 <div className="space-y-1">
@@ -569,6 +598,7 @@ export default function OrganizerAuthPage() {
                     value={liPw}
                     onChange={setLiPw}
                     icon={Lock}
+                    error={fieldErrors.liPw}
                     rightSlot={eyeBtn(showLiPw, () => setShowLiPw((p) => !p))}
                   />
                   <div className="flex justify-end pt-0.5">
