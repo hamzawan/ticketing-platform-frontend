@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar, CheckCircle, Eye, EyeOff, Lock, Mail, Percent, Ticket, Users, Zap } from "lucide-react";
+import { AlertCircle, CheckCircle, Eye, EyeOff, Lock, Mail, RefreshCw } from "lucide-react";
 import {
   ACCESS_TOKEN_STORAGE_KEY,
   ApiError,
@@ -19,7 +19,7 @@ import { hasSession } from "@/lib/auth";
  * ─────────────────────────────────────────────────────────────────────────
 
 import Link from "next/link";
-import { Check, Monitor, Settings } from "lucide-react";
+import { Calendar, Check, Monitor, Settings, Ticket } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 const PORTALS: {
@@ -51,7 +51,7 @@ const PORTALS: {
     sublabel: "Event creator",
     desc: "Create events, manage tickets, and process refunds for your attendees.",
     Icon: Calendar,
-    color: "#2563EB",
+    color: "#0066FF",
     features: ["Create & publish events", "Ticket types & pricing", "My Events dashboard", "Refund management"],
     enabled: true,
   },
@@ -82,14 +82,8 @@ const PORTALS: {
 export default function RoleSelectorPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 py-12">
-      <div className="relative mb-2 pointer-events-none">
-        <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[200px] rounded-full opacity-20"
-          style={{ background: "radial-gradient(circle, #2563EB 0%, transparent 70%)" }}
-        />
-      </div>
       <div className="relative text-center mb-10">
-        <div className="inline-flex items-center gap-2 bg-accent/10 border border-accent/20 rounded-full px-4 py-1.5 mb-5 text-accent text-xs font-semibold tracking-widest uppercase">
+        <div className="inline-flex items-center gap-2 bg-accent border border-primary/20 rounded-full px-4 py-1.5 mb-5 text-primary text-xs font-semibold tracking-widest uppercase">
           Big Bounce America · Ticketing Platform
         </div>
         <h1 className="text-4xl md:text-5xl font-black tracking-tight font-(family-name:--font-display)">
@@ -133,7 +127,7 @@ export default function RoleSelectorPage() {
             <Link
               key={p.id}
               href={p.href}
-              className="bg-card border border-border rounded-2xl p-5 text-left hover:border-primary/40 hover:shadow-[0_0_0_1px_rgba(37,99,235,0.2),0_8px_32px_rgba(37,99,235,0.1)] transition-all duration-200"
+              className="bg-card border border-border rounded-2xl p-5 text-left hover:border-primary/40 hover:shadow-[0_0_0_1px_rgba(0,102,255,0.2),0_8px_32px_rgba(0,102,255,0.1)] transition-all duration-200"
             >
               {card}
             </Link>
@@ -177,13 +171,13 @@ function InputField({
 }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={id} className="block text-xs font-semibold text-secondary-foreground tracking-wide uppercase">
+      <label htmlFor={id} className="block text-xs font-semibold uppercase tracking-wide text-foreground">
         {label}
       </label>
       <div className="relative">
         {Icon && (
           <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
-            <Icon size={15} />
+            <Icon size={14} />
           </span>
         )}
         <input
@@ -192,86 +186,137 @@ function InputField({
           placeholder={placeholder}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full bg-secondary/60 border border-border rounded-xl py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/60 transition-all"
+          className="w-full bg-card border border-border rounded-xl py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-all"
           style={{ paddingLeft: Icon ? "2.5rem" : "0.875rem", paddingRight: rightSlot ? "2.75rem" : "0.875rem" }}
         />
-        {rightSlot && <span className="absolute right-3 top-1/2 -translate-y-1/2">{rightSlot}</span>}
+        {rightSlot && <span className="absolute right-3.5 top-1/2 -translate-y-1/2">{rightSlot}</span>}
       </div>
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-xs text-red-500">{error}</p>}
     </div>
   );
 }
 
+/**
+ * Illustration panel shared by the sign-in and sign-up forms — same
+ * background, artwork, and caption on both, so switching tabs never
+ * changes the surrounding chrome.
+ */
 function LeftPanel() {
   return (
     <div
-      className="hidden lg:flex lg:w-[42%] xl:w-[45%] relative flex-col justify-between p-10 overflow-hidden"
-      style={{ background: "linear-gradient(145deg, #07102A 0%, #0C1C3E 40%, #112040 100%)" }}
+      className="hidden lg:flex lg:w-[52%] flex-col items-center justify-center relative overflow-hidden px-12 py-10"
+      style={{ backgroundColor: "#F0F6FF" }}
     >
       <div
-        className="absolute top-0 left-0 w-96 h-96 rounded-full opacity-20 pointer-events-none"
-        style={{ background: "radial-gradient(circle, #2563EB 0%, transparent 70%)", transform: "translate(-30%, -30%)" }}
+        className="absolute top-0 right-0 w-72 h-72 rounded-full opacity-40 pointer-events-none"
+        style={{ background: "radial-gradient(circle, #BFDBFE 0%, transparent 70%)", transform: "translate(30%, -30%)" }}
       />
       <div
-        className="absolute bottom-0 right-0 w-72 h-72 rounded-full opacity-15 pointer-events-none"
-        style={{ background: "radial-gradient(circle, #F97316 0%, transparent 70%)", transform: "translate(30%, 30%)" }}
+        className="absolute bottom-0 left-0 w-64 h-64 rounded-full opacity-30 pointer-events-none"
+        style={{ background: "radial-gradient(circle, #DDD6FE 0%, transparent 70%)", transform: "translate(-30%, 30%)" }}
       />
-      <div
-        className="absolute inset-0 opacity-[0.04] pointer-events-none"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(255,255,255,.3) 39px,rgba(255,255,255,.3) 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(255,255,255,.3) 39px,rgba(255,255,255,.3) 40px)",
-        }}
-      />
-      <div className="relative flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center flex-shrink-0">
-          <Zap size={16} className="text-white" />
-        </div>
-        <div>
-          <div className="text-sm font-black tracking-tight font-(family-name:--font-display)">Big Bounce America</div>
-          <div className="text-xs text-muted-foreground">Organizer Portal</div>
-        </div>
-      </div>
-      <div className="relative">
-        <div className="inline-flex items-center gap-2 bg-accent/10 border border-accent/20 rounded-full px-3.5 py-1 mb-6 text-accent text-xs font-semibold tracking-widest uppercase">
-          Organizer Portal
-        </div>
-        <h2 className="text-3xl xl:text-4xl font-black leading-tight mb-4 text-foreground font-(family-name:--font-display)">
-          Your events,
-          <br />
-          your platform.
-        </h2>
-        <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-          Create events, manage ticket types, run discount campaigns, build seat maps, and grow your team — all
-          from one place.
-        </p>
-        <div className="mt-8 space-y-3">
-          {[
-            { icon: Calendar, label: "Event creation & publishing" },
-            { icon: Ticket, label: "Ticket types & dynamic pricing" },
-            { icon: Percent, label: "Discount codes & promotions" },
-            { icon: Users, label: "Team access management" },
-          ].map(({ icon: Icon, label }) => (
-            <div key={label} className="flex items-center gap-3">
-              <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
-                <Icon size={13} className="text-primary" />
-              </div>
-              <span className="text-xs text-secondary-foreground">{label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="relative flex gap-6">
+
+      <svg viewBox="0 0 480 380" className="w-full max-w-lg relative z-10" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Bounce house event illustration">
+        <ellipse cx="240" cy="355" rx="210" ry="14" fill="#DBEAFE" />
+
+        {/* Large bounce castle (center) */}
+        <rect x="120" y="200" width="180" height="140" rx="6" fill="#3B82F6" />
+        <rect x="120" y="200" width="20" height="140" rx="3" fill="#2563EB" />
+        <rect x="280" y="200" width="20" height="140" rx="3" fill="#2563EB" />
+        <path d="M115 205 Q210 130 305 205 Z" fill="#60A5FA" />
+        <path d="M125 205 Q210 140 295 205 Z" fill="#93C5FD" />
+        <path d="M165 175 Q210 150 255 175" stroke="white" strokeWidth="3" strokeLinecap="round" opacity="0.5" />
+        <rect x="190" y="270" width="60" height="70" rx="30" fill="#1D4ED8" />
+        <rect x="196" y="276" width="48" height="58" rx="24" fill="#BFDBFE" />
+        <rect x="138" y="225" width="36" height="28" rx="14" fill="#1D4ED8" />
+        <rect x="246" y="225" width="36" height="28" rx="14" fill="#1D4ED8" />
+        <rect x="141" y="228" width="30" height="22" rx="11" fill="#BFDBFE" />
+        <rect x="249" y="228" width="30" height="22" rx="11" fill="#BFDBFE" />
+        <rect x="110" y="185" width="32" height="30" rx="4" fill="#2563EB" />
+        <rect x="278" y="185" width="32" height="30" rx="4" fill="#2563EB" />
+        <path d="M108 185 L116 170 L124 185 Z" fill="#1D4ED8" />
+        <path d="M116 185 L124 170 L132 185 Z" fill="#1D4ED8" />
+        <path d="M276 185 L284 170 L292 185 Z" fill="#1D4ED8" />
+        <path d="M284 185 L292 170 L300 185 Z" fill="#1D4ED8" />
+        <line x1="210" y1="130" x2="210" y2="105" stroke="#1D4ED8" strokeWidth="2.5" strokeLinecap="round" />
+        <path d="M210 105 L228 112 L210 119 Z" fill="#EF4444" />
+        <rect x="195" y="330" width="50" height="10" rx="3" fill="#1D4ED8" />
+        <rect x="200" y="340" width="40" height="10" rx="3" fill="#2563EB" />
+
+        {/* Small bouncy slide (right) */}
+        <rect x="315" y="245" width="100" height="95" rx="6" fill="#F59E0B" />
+        <rect x="315" y="245" width="15" height="95" rx="3" fill="#D97706" />
+        <rect x="400" y="245" width="15" height="95" rx="3" fill="#D97706" />
+        <path d="M310 250 Q365 205 420 250 Z" fill="#FCD34D" />
+        <path d="M318 250 Q365 213 412 250 Z" fill="#FDE68A" />
+        <path d="M338 232 Q365 218 392 232" stroke="white" strokeWidth="2.5" strokeLinecap="round" opacity="0.5" />
+        <path d="M415 290 L455 340" stroke="#D97706" strokeWidth="12" strokeLinecap="round" />
+        <path d="M416 290 L456 340" stroke="#FCD34D" strokeWidth="8" strokeLinecap="round" />
+        <rect x="347" y="285" width="36" height="55" rx="18" fill="#D97706" />
+        <rect x="351" y="289" width="28" height="47" rx="14" fill="#FEF3C7" />
+        <line x1="365" y1="205" x2="365" y2="185" stroke="#D97706" strokeWidth="2" strokeLinecap="round" />
+        <path d="M365 185 L378 190 L365 195 Z" fill="#EF4444" />
+
+        {/* Small bouncy cube (left) */}
+        <rect x="42" y="255" width="90" height="85" rx="6" fill="#10B981" />
+        <rect x="42" y="255" width="14" height="85" rx="3" fill="#059669" />
+        <rect x="118" y="255" width="14" height="85" rx="3" fill="#059669" />
+        <path d="M37 260 Q87 215 137 260 Z" fill="#34D399" />
+        <path d="M45 260 Q87 222 129 260 Z" fill="#6EE7B7" />
+        <path d="M62 242 Q87 228 112 242" stroke="white" strokeWidth="2.5" strokeLinecap="round" opacity="0.5" />
+        <rect x="72" y="292" width="30" height="48" rx="15" fill="#059669" />
+        <rect x="76" y="296" width="22" height="40" rx="11" fill="#D1FAE5" />
+        <line x1="87" y1="215" x2="87" y2="196" stroke="#059669" strokeWidth="2" strokeLinecap="round" />
+        <path d="M87 196 L100 201 L87 206 Z" fill="#F59E0B" />
+
+        {/* Floating tickets */}
+        <g transform="translate(58, 80) rotate(-12)">
+          <rect width="60" height="30" rx="6" fill="#0066FF" />
+          <circle cx="0" cy="15" r="7" fill="#F0F6FF" />
+          <circle cx="60" cy="15" r="7" fill="#F0F6FF" />
+          <line x1="9" y1="15" x2="51" y2="15" stroke="white" strokeWidth="1.5" strokeDasharray="4 3" />
+          <rect x="14" y="8" width="22" height="5" rx="2.5" fill="white" opacity="0.8" />
+          <rect x="14" y="17" width="14" height="4" rx="2" fill="white" opacity="0.5" />
+        </g>
+        <g transform="translate(360, 60) rotate(8)">
+          <rect width="56" height="28" rx="6" fill="#7C3AED" />
+          <circle cx="0" cy="14" r="6" fill="#F0F6FF" />
+          <circle cx="56" cy="14" r="6" fill="#F0F6FF" />
+          <line x1="8" y1="14" x2="48" y2="14" stroke="white" strokeWidth="1.5" strokeDasharray="4 3" />
+          <rect x="12" y="7" width="20" height="5" rx="2.5" fill="white" opacity="0.8" />
+        </g>
+
+        {/* Stars / sparkles */}
+        <circle cx="80" cy="160" r="4" fill="#FCD34D" />
+        <circle cx="400" cy="155" r="3" fill="#FCA5A5" />
+        <circle cx="440" cy="200" r="4" fill="#FCD34D" />
+        <circle cx="50" cy="210" r="3" fill="#A5B4FC" />
+        <path d="M88 155 L90 148 L92 155 L99 157 L92 159 L90 166 L88 159 L81 157 Z" fill="#FCD34D" />
+        <path d="M405 148 L407 143 L409 148 L414 150 L409 152 L407 157 L405 152 L400 150 Z" fill="#FCA5A5" />
+
+        {/* Confetti dots */}
         {[
-          ["2,400+", "Events hosted"],
-          ["$4.2M", "Revenue processed"],
-          ["180K", "Tickets sold"],
-        ].map(([v, l]) => (
-          <div key={l}>
-            <div className="text-lg font-black text-foreground font-(family-name:--font-display)">{v}</div>
-            <div className="text-xs text-muted-foreground">{l}</div>
-          </div>
+          [170, 95, "#FCD34D"], [200, 75, "#F87171"], [230, 90, "#60A5FA"],
+          [260, 78, "#34D399"], [290, 95, "#A78BFA"], [155, 110, "#FB923C"],
+        ].map(([cx, cy, fill], i) => (
+          <circle key={i} cx={cx as number} cy={cy as number} r="4" fill={fill as string} />
         ))}
+
+        {/* Kid in castle doorway */}
+        <circle cx="220" cy="302" r="9" fill="#FDE68A" />
+        <rect x="213" y="311" width="14" height="18" rx="4" fill="#EF4444" />
+
+        {/* Crowd dots at base */}
+        {[140, 165, 195, 250, 272, 300].map((x, i) => (
+          <g key={i}>
+            <circle cx={x} cy={342} r="7" fill={["#FDE68A", "#FECACA", "#BBF7D0", "#BAE6FD", "#DDD6FE", "#FEF08A"][i]} />
+            <rect x={x - 5} y={349} width="10" height="12" rx="3" fill={["#EF4444", "#3B82F6", "#10B981", "#F59E0B", "#8B5CF6", "#EC4899"][i]} />
+          </g>
+        ))}
+      </svg>
+
+      <div className="relative z-10 text-center mt-4">
+        <p className="text-sm font-semibold text-blue-900/60">The platform behind America&apos;s biggest bounce events</p>
       </div>
     </div>
   );
@@ -319,7 +364,7 @@ export default function OrganizerAuthPage() {
 
   const eyeBtn = (show: boolean, toggle: () => void) => (
     <button type="button" onClick={toggle} className="text-muted-foreground hover:text-foreground transition-colors">
-      {show ? <EyeOff size={15} /> : <Eye size={15} />}
+      {show ? <EyeOff size={14} /> : <Eye size={14} />}
     </button>
   );
 
@@ -407,31 +452,29 @@ export default function OrganizerAuthPage() {
   if (!checked) return null;
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen flex bg-white">
       <LeftPanel />
 
       {/* Right: form panel */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 relative">
+      <div className="flex-1 flex flex-col justify-center px-8 py-12 bg-white relative">
         {/* Mobile logo */}
-        <div className="lg:hidden flex items-center gap-2.5 mb-8">
+        <div className="lg:hidden flex items-center justify-center gap-2.5 mb-8">
           <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center">
-            <Zap size={14} className="text-white" />
+            <Lock size={14} className="text-white" />
           </div>
           <div className="text-sm font-black font-(family-name:--font-display)">Big Bounce America</div>
         </div>
 
-        <div className="w-full max-w-[400px]">
+        <div className="w-full max-w-sm mx-auto">
           {/* Tab switcher */}
-          <div className="flex bg-secondary/60 rounded-xl p-1 mb-7 gap-1">
+          <div className="flex bg-secondary rounded-xl p-1 mb-7 gap-1">
             {(["signup", "login"] as const).map((tab) => (
               <button
                 key={tab}
                 type="button"
                 onClick={() => switchTab(tab)}
                 className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
-                  mode === tab
-                    ? "bg-primary text-white shadow-[0_2px_12px_rgba(37,99,235,0.35)]"
-                    : "text-muted-foreground hover:text-foreground"
+                  mode === tab ? "bg-primary text-white shadow-[0_2px_12px_rgba(0,102,255,0.35)]" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {tab === "signup" ? "Sign Up" : "Sign In"}
@@ -440,11 +483,11 @@ export default function OrganizerAuthPage() {
           </div>
 
           {/* Heading */}
-          <div className="mb-6">
-            <h1 className="text-2xl font-black mb-1 text-foreground font-(family-name:--font-display)">
+          <div className="mb-7">
+            <h2 className="text-2xl font-black mb-1.5" style={{ fontFamily: "var(--font-display)" }}>
               {mode === "signup" ? "Create your account" : "Welcome back"}
-            </h1>
-            <p className="text-sm text-muted-foreground">
+            </h2>
+            <p className="text-muted-foreground text-sm">
               {mode === "signup"
                 ? "Enter your email and choose a password to get started."
                 : "Sign in to your organizer account to continue."}
@@ -452,20 +495,21 @@ export default function OrganizerAuthPage() {
           </div>
 
           {error && (
-            <div className="mb-4 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl px-4 py-3">
-              {error}
+            <div className="mb-4 flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+              <AlertCircle size={14} className="text-red-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-red-700 leading-relaxed">{error}</p>
             </div>
           )}
 
           {/* ── SIGNUP FORM ── */}
           {mode === "signup" &&
             (signupSuccess ? (
-              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-6 flex flex-col items-center gap-3 text-center">
-                <div className="w-12 h-12 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
-                  <CheckCircle size={22} className="text-emerald-400" />
+              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 flex flex-col items-center gap-3 text-center">
+                <div className="w-12 h-12 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center">
+                  <CheckCircle size={22} className="text-emerald-600" />
                 </div>
                 <div>
-                  <div className="text-sm font-bold text-emerald-400 font-(family-name:--font-display)">
+                  <div className="text-sm font-bold text-emerald-700 font-(family-name:--font-display)">
                     Account Created!
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">Redirecting you to sign in…</div>
@@ -473,7 +517,6 @@ export default function OrganizerAuthPage() {
               </div>
             ) : (
               <form onSubmit={handleSignup} className="space-y-4">
-                {/* email */}
                 <InputField
                   label="Email Address"
                   id="su-email"
@@ -484,7 +527,6 @@ export default function OrganizerAuthPage() {
                   icon={Mail}
                   error={fieldErrors.suEmail}
                 />
-                {/* password1 */}
                 <InputField
                   label="Password"
                   id="su-pw1"
@@ -496,7 +538,6 @@ export default function OrganizerAuthPage() {
                   rightSlot={eyeBtn(showSuPw1, () => setShowSuPw1((p) => !p))}
                   error={fieldErrors.suPw1}
                 />
-                {/* password2 */}
                 <InputField
                   label="Confirm Password"
                   id="su-pw2"
@@ -512,9 +553,16 @@ export default function OrganizerAuthPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full bg-primary hover:bg-primary/90 active:scale-[0.99] disabled:opacity-60 disabled:pointer-events-none text-white font-bold text-sm rounded-xl py-3 transition-all mt-1 shadow-[0_4px_24px_rgba(37,99,235,0.35)]"
+                  className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.98] disabled:opacity-60"
+                  style={{ backgroundColor: "var(--primary)", boxShadow: "0 4px 24px rgba(0,102,255,0.35)" }}
                 >
-                  {submitting ? "Creating Account…" : "Create Account"}
+                  {submitting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <RefreshCw size={14} className="animate-spin" /> Creating Account…
+                    </span>
+                  ) : (
+                    "Create Account"
+                  )}
                 </button>
 
                 <p className="text-xs text-muted-foreground text-center pt-1">
@@ -530,7 +578,7 @@ export default function OrganizerAuthPage() {
             (forgotOpen ? (
               <div className="bg-card border border-border rounded-2xl p-6 space-y-5">
                 <div className="flex items-center gap-2 mb-1">
-                  <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center">
                     <Lock size={14} className="text-primary" />
                   </div>
                   <div>
@@ -539,7 +587,7 @@ export default function OrganizerAuthPage() {
                   </div>
                 </div>
                 {forgotSent ? (
-                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 text-sm text-emerald-400 flex items-start gap-2.5">
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm text-emerald-700 flex items-start gap-2.5">
                     <CheckCircle size={15} className="flex-shrink-0 mt-0.5" />
                     <span>
                       Reset link sent to <strong>{forgotEmail}</strong>. Check your inbox.
@@ -577,7 +625,6 @@ export default function OrganizerAuthPage() {
               </div>
             ) : (
               <form onSubmit={handleLogin} className="space-y-4">
-                {/* email */}
                 <InputField
                   label="Email Address"
                   id="li-email"
@@ -588,20 +635,11 @@ export default function OrganizerAuthPage() {
                   icon={Mail}
                   error={fieldErrors.liEmail}
                 />
-                {/* password */}
                 <div className="space-y-1">
-                  <InputField
-                    label="Password"
-                    id="li-pw"
-                    type={showLiPw ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={liPw}
-                    onChange={setLiPw}
-                    icon={Lock}
-                    error={fieldErrors.liPw}
-                    rightSlot={eyeBtn(showLiPw, () => setShowLiPw((p) => !p))}
-                  />
-                  <div className="flex justify-end pt-0.5">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="li-pw" className="text-xs font-semibold uppercase tracking-wide text-foreground">
+                      Password
+                    </label>
                     <button
                       type="button"
                       onClick={() => setForgotOpen(true)}
@@ -610,14 +648,40 @@ export default function OrganizerAuthPage() {
                       Forgot password?
                     </button>
                   </div>
+                  <div className="relative">
+                    <Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      id="li-pw"
+                      type={showLiPw ? "text" : "password"}
+                      value={liPw}
+                      onChange={(e) => setLiPw(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full pl-10 pr-11 py-2.5 text-sm rounded-xl border border-border bg-card outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowLiPw((p) => !p)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {showLiPw ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                  {fieldErrors.liPw && <p className="text-xs text-red-500">{fieldErrors.liPw}</p>}
                 </div>
 
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full bg-primary hover:bg-primary/90 active:scale-[0.99] disabled:opacity-60 disabled:pointer-events-none text-white font-bold text-sm rounded-xl py-3 transition-all shadow-[0_4px_24px_rgba(37,99,235,0.35)]"
+                  className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all active:scale-[0.98] disabled:opacity-60"
+                  style={{ backgroundColor: "var(--primary)", boxShadow: "0 4px 24px rgba(0,102,255,0.35)" }}
                 >
-                  {submitting ? "Signing In…" : "Sign In to Organizer Portal"}
+                  {submitting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <RefreshCw size={14} className="animate-spin" /> Signing in…
+                    </span>
+                  ) : (
+                    "Sign In to Organizer Portal"
+                  )}
                 </button>
               </form>
             ))}
@@ -625,8 +689,7 @@ export default function OrganizerAuthPage() {
           {/* Social proof footer */}
           <div className="mt-8 pt-6 border-t border-border text-center">
             <p className="text-xs text-muted-foreground">
-              Trusted by <span className="text-foreground font-semibold">1,200+</span> event organizers across the
-              US
+              Trusted by <span className="text-foreground font-semibold">1,200+</span> event organizers across the US
             </p>
           </div>
         </div>

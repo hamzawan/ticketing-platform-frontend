@@ -28,7 +28,7 @@ export function StatCard({
         </div>
       </div>
       <div className="text-2xl font-black font-(family-name:--font-display)">{value}</div>
-      {sub && <div className="text-xs text-emerald-400 mt-1">{sub}</div>}
+      {sub && <div className="text-xs text-emerald-600 mt-1 font-medium">{sub}</div>}
     </div>
   );
 }

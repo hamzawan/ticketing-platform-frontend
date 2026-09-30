@@ -442,6 +442,71 @@ export async function updateEvent(
   return res.json() as Promise<OrganizerEvent>;
 }
 
+export type RefundRequestItem = {
+  id: string;
+  event_id: string;
+  event_name: string;
+  session_date: string;
+  customer_name: string;
+  customer_email: string;
+  quantity: number;
+  amount: string;
+  refunded_amount: string;
+  status: string;
+  created_at: string;
+  reviewed_at: string | null;
+  ticket_types: string[];
+};
+
+export type RefundRequestsResponse = {
+  total_refund_requests: number;
+  total_pending_requests: number;
+  total_processing_requests: number;
+  total_completed_requests: number;
+  total_failed_requests: number;
+  total_rejected_requests: number;
+  total_refunded_amount: string;
+  page: number;
+  page_size: number;
+  total: number;
+  results: RefundRequestItem[];
+};
+
+export type RefundRequestFilters = {
+  page?: number;
+  status?: string;
+  event_id?: string;
+  created_from?: string;
+  created_to?: string;
+};
+
+export async function getRefundRequests(
+  filters: RefundRequestFilters = {},
+  token?: string | null,
+): Promise<RefundRequestsResponse> {
+  const params = new URLSearchParams();
+  if (filters.page) params.set("page", String(filters.page));
+  if (filters.status) params.set("status", filters.status);
+  if (filters.event_id) params.set("event_id", filters.event_id);
+  if (filters.created_from) params.set("created_from", filters.created_from);
+  if (filters.created_to) params.set("created_to", filters.created_to);
+
+  const query = params.toString();
+  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/refund-requests/${query ? `?${query}` : ""}`, {
+    cache: "no-store",
+    headers: {
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!res.ok) {
+    throw new ApiError(await readErrorDetail(res, "Failed to load refund requests."), res.status);
+  }
+
+  return res.json() as Promise<RefundRequestsResponse>;
+}
+
 export async function publishEvent(eventId: string, token?: string | null): Promise<OrganizerEvent> {
   const res = await fetch(`${API_BASE_URL}/api/v1/events/${eventId}/publish/`, {
     method: "POST",
