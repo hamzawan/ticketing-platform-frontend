@@ -1,7 +1,7 @@
 export function ProgressBar({
   value,
   max,
-  color = "#2563EB",
+  color = "#0066FF",
 }: {
   value: number;
   max: number;

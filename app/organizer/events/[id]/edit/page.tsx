@@ -57,7 +57,7 @@ export default function EditEventPage() {
   if (status === "error") {
     return (
       <div className="p-4 sm:p-6 space-y-5 max-w-2xl">
-        <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-2xl px-4 py-3">
+        <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-2xl px-4 py-3">
           Failed to load event{errorMessage ? `: ${errorMessage}` : "."}
         </div>
         <button
