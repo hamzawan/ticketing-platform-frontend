@@ -296,6 +296,8 @@ export type OrganizerEvent = {
   description: string;
   venue: string;
   city: string | null;
+  address?: string | null;
+  map_url?: string | null;
   event_date: string;
   start_time: string;
   end_time: string;
@@ -376,6 +378,8 @@ export type CreateEventPayload = {
   sessions: string | null;
   description: string | null;
   city: string | null;
+  address: string | null;
+  map_url: string | null;
   min_age: number | null;
   max_age: number | null;
   images: File[];
@@ -398,6 +402,8 @@ function buildEventFormData(payload: CreateEventPayload): FormData {
   if (payload.sessions) body.append("sessions", payload.sessions);
   if (payload.description) body.append("description", payload.description);
   if (payload.city) body.append("city", payload.city);
+  if (payload.address) body.append("address", payload.address);
+  if (payload.map_url) body.append("map_url", payload.map_url);
   if (payload.min_age != null) body.append("min_age", String(payload.min_age));
   if (payload.max_age != null) body.append("max_age", String(payload.max_age));
   for (const image of payload.images) body.append("images", image, image.name);
