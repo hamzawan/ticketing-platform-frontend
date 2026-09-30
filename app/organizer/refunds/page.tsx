@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AlertTriangle, RotateCcw, Search } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { AlertTriangle, CheckCircle, RotateCcw, Search, X, XCircle } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
 import { RefundsSkeleton } from "@/components/organizer/refunds-skeleton";
 import { ACCESS_TOKEN_STORAGE_KEY, getRefundRequests, type RefundRequestsResponse } from "@/lib/api";
@@ -28,12 +28,25 @@ export default function RefundsPage() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("");
   const [search, setSearch] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
+  // Set when the refetch follows an approve/reject: refresh the data in
+  // place instead of swapping the page back to its loading state.
+  const silentRefreshRef = useRef(false);
+  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
-      setLoadStatus("loading");
+      const silent = silentRefreshRef.current;
+      silentRefreshRef.current = false;
+      if (!silent) setLoadStatus("loading");
       try {
         const response = await getRefundRequests({ page, status: statusFilter || undefined }, getStoredToken());
         if (!cancelled) {
@@ -41,10 +54,13 @@ export default function RefundsPage() {
           setLoadStatus("ready");
         }
       } catch (err) {
-        if (!cancelled) {
-          setErrorMessage(err instanceof Error ? err.message : "Unknown error");
-          setLoadStatus("error");
+        if (cancelled) return;
+        if (silent) {
+          setToast({ type: "error", message: "Couldn't refresh the list. Please reload the page." });
+          return;
         }
+        setErrorMessage(err instanceof Error ? err.message : "Unknown error");
+        setLoadStatus("error");
       }
     }
 
@@ -52,7 +68,7 @@ export default function RefundsPage() {
     return () => {
       cancelled = true;
     };
-  }, [page, statusFilter]);
+  }, [page, statusFilter, reloadKey]);
 
   function applyStatusFilter(value: string) {
     setPage(1);
@@ -132,12 +148,39 @@ export default function RefundsPage() {
           loadStatus === "ready" &&
           data && (
             <>
-              <RefundsTable refundRequests={filtered} />
+              <RefundsTable
+                refundRequests={filtered}
+                onActioned={(action) => {
+                  setToast({
+                    type: "success",
+                    message: action === "completed" ? "Refund request approved." : "Refund request rejected.",
+                  });
+                  silentRefreshRef.current = true;
+                  setReloadKey((k) => k + 1);
+                }}
+                onFailed={(message) => setToast({ type: "error", message })}
+              />
               <Pagination page={data.page} pageSize={data.page_size} total={data.total} onChange={setPage} />
             </>
           )
         )}
       </div>
+      {toast && (
+        <div
+          role="status"
+          className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 max-w-sm rounded-xl border px-4 py-3 shadow-lg text-sm font-medium ${
+            toast.type === "success"
+              ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+              : "bg-red-50 border-red-200 text-red-700"
+          }`}
+        >
+          {toast.type === "success" ? <CheckCircle size={16} className="flex-shrink-0" /> : <XCircle size={16} className="flex-shrink-0" />}
+          <span className="flex-1">{toast.message}</span>
+          <button onClick={() => setToast(null)} aria-label="Dismiss" className="opacity-60 hover:opacity-100 transition-opacity">
+            <X size={14} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

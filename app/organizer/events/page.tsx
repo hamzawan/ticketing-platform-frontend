@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, MapPin, Plus, Search, Ticket } from "lucide-react";
+import { Calendar, ChevronRight, MapPin, Plus, Search } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/badge";
 import { EventDetailPanel } from "@/components/organizer/event-detail-panel";
@@ -36,7 +36,9 @@ type DisplayEvent = {
   status: string;
   capacity: number;
   sold: number;
-  ticketTypeCount: number;
+  sessionCount: number;
+  // Revenue from sold tickets; derived from the full event records (not in the list API).
+  revenue: number;
   image: string;
 };
 
@@ -61,7 +63,9 @@ function toDisplayEvents(events: MyEventListItem[]): DisplayEvent[] {
     status: normalizeEventStatus(e.status),
     capacity: e.total_tickets,
     sold: e.tickets_sold,
-    ticketTypeCount: e.ticket_types_count,
+    // Temporary: the list API has no session count yet, so assume one session.
+    sessionCount: e.sessions_count ?? 1,
+    revenue: 0,
     image: resolveMediaUrl(e.first_image) ?? FALLBACK_IMAGE,
   }));
 }
@@ -92,6 +96,25 @@ export default function MyEventsPage() {
         if (!cancelled) {
           setEvents(toDisplayEvents(data.results));
           setStatus("ready");
+        }
+        // The my-events list has no session count, so take it from the full
+        // event records (same source the details panel uses). Best effort —
+        // cards keep their default until it arrives, or if it fails.
+        try {
+          const all = await getEvents(getStoredToken());
+          if (cancelled) return;
+          const extra = new Map(
+            all.map((e) => [
+              e.id,
+              {
+                sessionCount: Array.isArray(e.sessions) && e.sessions.length > 0 ? e.sessions.length : 1,
+                revenue: e.ticket_types.reduce((sum, t) => sum + Number(t.price || 0) * (t.quantity - t.available_quantity), 0),
+              },
+            ]),
+          );
+          setEvents((prev) => prev.map((e) => ({ ...e, ...extra.get(e.id) })));
+        } catch {
+          // keep default session counts
         }
       } catch (err) {
         if (!cancelled) {
@@ -247,16 +270,15 @@ export default function MyEventsPage() {
                           <MapPin size={10} />
                           {e.city || e.venue}
                         </span>
-                        <span>{e.date}</span>
                       </div>
                     </div>
                     <StatusBadge status={e.status} />
                   </div>
                   <div className="flex flex-wrap items-center gap-4">
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Ticket size={11} />
+                      <Calendar size={11} />
                       <span>
-                        {e.ticketTypeCount} ticket type{e.ticketTypeCount !== 1 ? "s" : ""}
+                        {e.sessionCount} session{e.sessionCount !== 1 ? "s" : ""}
                       </span>
                     </div>
                     {e.capacity > 0 ? (
@@ -274,6 +296,7 @@ export default function MyEventsPage() {
                     ) : (
                       <span className="text-xs text-muted-foreground italic">No tickets configured</span>
                     )}
+                    {e.revenue > 0 && <span className="text-xs font-bold flex-shrink-0">${e.revenue.toLocaleString()}</span>}
                   </div>
                 </div>
                 <div className="flex items-center pr-4 flex-shrink-0">

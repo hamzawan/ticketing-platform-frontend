@@ -3,7 +3,14 @@
 import { useState } from "react";
 import { CheckCircle, XCircle } from "lucide-react";
 import { StatusBadge } from "@/components/ui/badge";
-import { formatDate, formatMoney, type RefundRequestItem } from "@/lib/api";
+import {
+  ACCESS_TOKEN_STORAGE_KEY,
+  approveRefundRequest,
+  formatDate,
+  formatMoney,
+  rejectRefundRequest,
+  type RefundRequestItem,
+} from "@/lib/api";
 
 type LocalStatus = "completed" | "rejected";
 
@@ -12,17 +19,42 @@ type LocalStatus = "completed" | "rejected";
 // field exists; swap for `request.reason` once the API adds it.
 const REASON_PLACEHOLDER = "No reason provided";
 
-export function RefundsTable({ refundRequests }: { refundRequests: RefundRequestItem[] }) {
-  // The refund-requests API doesn't yet expose an approve/reject mutation —
-  // until it does, actioning a request here only updates local display
-  // state (mirrors the Figma prototype's behavior). Swap this for a real
-  // POST call once that endpoint exists.
-  const [overrides, setOverrides] = useState<Partial<Record<string, LocalStatus>>>({});
+export function RefundsTable({
+  refundRequests,
+  onActioned,
+  onFailed,
+}: {
+  refundRequests: RefundRequestItem[];
+  // Called after a successful approve/reject so the page can refetch the list and stats.
+  onActioned: (action: LocalStatus) => void;
+  onFailed: (message: string) => void;
+}) {
   const [confirmAction, setConfirmAction] = useState<{ id: string; action: LocalStatus } | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<{ id: string; message: string } | null>(null);
 
-  function handleAction(id: string, action: LocalStatus) {
-    setOverrides((prev) => ({ ...prev, [id]: action }));
-    setConfirmAction(null);
+  async function handleAction(id: string, action: LocalStatus) {
+    if (busyId) return;
+    if (action === "rejected" && !rejectReason.trim()) {
+      setActionError({ id, message: "Please enter a reason for rejecting." });
+      return;
+    }
+    setBusyId(id);
+    setActionError(null);
+    try {
+      const token = typeof window !== "undefined" ? window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) : null;
+      await (action === "completed" ? approveRefundRequest(id, token) : rejectRefundRequest(id, rejectReason.trim(), token));
+      setConfirmAction(null);
+      setRejectReason("");
+      onActioned(action);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Something went wrong. Please try again.";
+      setActionError({ id, message });
+      onFailed(message);
+    } finally {
+      setBusyId(null);
+    }
   }
 
   return (
@@ -44,7 +76,8 @@ export function RefundsTable({ refundRequests }: { refundRequests: RefundRequest
         </thead>
         <tbody className="divide-y divide-border">
           {refundRequests.map((request) => {
-            const status = overrides[request.id] ?? request.status;
+            const status = request.status;
+            const busy = busyId === request.id;
             const isPending = status === "pending";
             const confirming = confirmAction?.id === request.id;
             return (
@@ -71,13 +104,20 @@ export function RefundsTable({ refundRequests }: { refundRequests: RefundRequest
                   {isPending && !confirming && (
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => setConfirmAction({ id: request.id, action: "completed" })}
+                        onClick={() => {
+                          setActionError(null);
+                          setConfirmAction({ id: request.id, action: "completed" });
+                        }}
                         className="flex items-center gap-1.5 text-xs font-bold bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 active:scale-95 transition-all shadow-sm whitespace-nowrap"
                       >
                         <CheckCircle size={12} /> Approve
                       </button>
                       <button
-                        onClick={() => setConfirmAction({ id: request.id, action: "rejected" })}
+                        onClick={() => {
+                          setActionError(null);
+                          setRejectReason("");
+                          setConfirmAction({ id: request.id, action: "rejected" });
+                        }}
                         className="flex items-center gap-1.5 text-xs font-bold bg-red-500 text-white px-3 py-1.5 rounded-lg hover:bg-red-600 active:scale-95 transition-all shadow-sm whitespace-nowrap"
                       >
                         <XCircle size={12} /> Reject
@@ -89,22 +129,36 @@ export function RefundsTable({ refundRequests }: { refundRequests: RefundRequest
                       <span className="text-xs text-amber-700 font-semibold">
                         {confirmAction.action === "completed" ? "Approve" : "Reject"} this refund?
                       </span>
+                      {confirmAction.action === "rejected" && (
+                        <input
+                          value={rejectReason}
+                          onChange={(e) => setRejectReason(e.target.value)}
+                          disabled={busy}
+                          placeholder="Reason for rejecting…"
+                          className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none focus:border-primary transition-colors placeholder:text-muted-foreground disabled:opacity-60"
+                        />
+                      )}
                       <div className="flex gap-1.5">
                         <button
                           onClick={() => handleAction(request.id, confirmAction.action)}
-                          className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all active:scale-95 text-white shadow-sm ${
+                          disabled={busy}
+                          className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all active:scale-95 text-white shadow-sm disabled:opacity-60 disabled:pointer-events-none ${
                             confirmAction.action === "completed" ? "bg-emerald-500 hover:bg-emerald-600" : "bg-red-500 hover:bg-red-600"
                           }`}
                         >
-                          Yes, confirm
+                          {busy ? "Processing…" : "Yes, confirm"}
                         </button>
                         <button
                           onClick={() => setConfirmAction(null)}
-                          className="text-xs px-3 py-1.5 rounded-lg border border-border hover:bg-secondary transition-colors text-muted-foreground"
+                          disabled={busy}
+                          className="text-xs px-3 py-1.5 rounded-lg border border-border hover:bg-secondary transition-colors text-muted-foreground disabled:opacity-60 disabled:pointer-events-none"
                         >
                           Cancel
                         </button>
                       </div>
+                      {actionError?.id === request.id && (
+                        <span className="text-xs text-red-600 max-w-48">{actionError.message}</span>
+                      )}
                     </div>
                   )}
                   {status === "completed" && !isPending && (

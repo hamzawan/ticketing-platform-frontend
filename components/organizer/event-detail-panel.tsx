@@ -15,6 +15,8 @@ type PanelSession = {
   startTime: string | null;
   endTime: string | null;
   ticketTypes: EventTicketType[];
+  // Placeholder display number (1, 2, 3…) until the API provides readable IDs.
+  displayNo: number;
 };
 
 function fmtTime(t: string | null | undefined): string {
@@ -46,6 +48,7 @@ function getSessions(event: OrganizerEvent): PanelSession[] {
     startTime: event.start_time,
     endTime: event.end_time,
     ticketTypes: event.ticket_types,
+    displayNo: 1,
   };
   if (!Array.isArray(event.sessions) || event.sessions.length === 0) return [fallback];
 
@@ -59,11 +62,23 @@ function getSessions(event: OrganizerEvent): PanelSession[] {
       startTime: asString(s.start_time) ?? event.start_time,
       endTime: asString(s.end_time) ?? event.end_time,
       ticketTypes: nested ?? event.ticket_types.filter((t) => t.session_id === id),
+      displayNo: i + 1,
     };
   });
 }
 
-function TicketTypesTable({ ticketTypes }: { ticketTypes: EventTicketType[] }) {
+// Google's embed URLs (/maps/embed?pb=…) only work inside an iframe — opening
+// one directly shows "The Google Maps Embed API must be used in an iframe".
+// For those, link to a Maps search for the event's address instead; the older
+// "?q=…&output=embed" style just needs the embed flag removed.
+function getOpenInMapsUrl(event: OrganizerEvent): string | null {
+  if (!event.map_url) return null;
+  if (!event.map_url.includes("/maps/embed")) return event.map_url.replace(/([?&])output=embed&?/, "$1").replace(/[?&]$/, "");
+  const query = event.address || [event.venue, event.city].filter(Boolean).join(", ");
+  return query ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}` : null;
+}
+
+function TicketTypesTable({ ticketTypes, ticketNos }: { ticketTypes: EventTicketType[]; ticketNos: Map<string, number> }) {
   if (ticketTypes.length === 0) {
     return (
       <div className="px-5 py-4 text-xs text-muted-foreground italic flex items-center justify-between">
@@ -93,7 +108,7 @@ function TicketTypesTable({ ticketTypes }: { ticketTypes: EventTicketType[] }) {
             const low = tt.quantity > 0 && tt.available_quantity / tt.quantity < 0.15;
             return (
               <tr key={tt.id} className="border-b border-border/50 last:border-0 hover:bg-secondary/20 transition-colors">
-                <td className="px-5 py-2.5 font-mono text-[10px] text-muted-foreground max-w-28 truncate">{tt.id}</td>
+                <td className="px-5 py-2.5 font-mono text-[10px] text-muted-foreground">{ticketNos.get(tt.id)}</td>
                 <td className="px-5 py-2.5 font-semibold">{tt.name}</td>
                 <td className="px-5 py-2.5 font-semibold">${tt.price}</td>
                 <td className="px-5 py-2.5 text-muted-foreground">{tt.quantity.toLocaleString()}</td>
@@ -117,7 +132,17 @@ function TicketTypesTable({ ticketTypes }: { ticketTypes: EventTicketType[] }) {
   );
 }
 
-function SessionRow({ session, expanded, onToggle }: { session: PanelSession; expanded: boolean; onToggle: () => void }) {
+function SessionRow({
+  session,
+  ticketNos,
+  expanded,
+  onToggle,
+}: {
+  session: PanelSession;
+  ticketNos: Map<string, number>;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
   const tts = session.ticketTypes;
   const totalQty = tts.reduce((s, t) => s + t.quantity, 0);
   const totalAvail = tts.reduce((s, t) => s + t.available_quantity, 0);
@@ -150,11 +175,11 @@ function SessionRow({ session, expanded, onToggle }: { session: PanelSession; ex
           )}
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
-          <span className="font-mono text-[10px] text-muted-foreground hidden md:block max-w-28 truncate">{session.id}</span>
+          <span className="font-mono text-[10px] text-muted-foreground hidden md:block">{session.displayNo}</span>
           <ChevronDown size={13} className={`text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />
         </div>
       </button>
-      {expanded && <TicketTypesTable ticketTypes={tts} />}
+      {expanded && <TicketTypesTable ticketTypes={tts} ticketNos={ticketNos} />}
     </div>
   );
 }
@@ -172,6 +197,12 @@ export function EventDetailPanel({ event, onBack }: { event: OrganizerEvent; onB
     return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
   }, [sessions]);
 
+  const ticketNos = useMemo(() => {
+    const map = new Map<string, number>();
+    sessions.forEach((sess) => sess.ticketTypes.forEach((t) => map.has(t.id) || map.set(t.id, map.size + 1)));
+    return map;
+  }, [sessions]);
+
   const allTTs = event.ticket_types;
   const totalCap = allTTs.reduce((sum, t) => sum + t.quantity, 0);
   const totalAvail = allTTs.reduce((sum, t) => sum + t.available_quantity, 0);
@@ -179,6 +210,7 @@ export function EventDetailPanel({ event, onBack }: { event: OrganizerEvent; onB
   const revenue = allTTs.reduce((sum, t) => sum + Number(t.price || 0) * (t.quantity - t.available_quantity), 0);
   // API uses "completed" for a finished event; StatusBadge's "ended" key
   // is what renders that as "Completed" with the gray/finished style.
+  const openInMapsUrl = getOpenInMapsUrl(event);
   const status = event.status === "completed" ? "ended" : event.status.replace(/_/g, "-");
 
   return (
@@ -241,9 +273,9 @@ export function EventDetailPanel({ event, onBack }: { event: OrganizerEvent; onB
                 <MapPin size={14} className="text-primary" />
                 <span className="text-sm font-bold font-(family-name:--font-display)">Location</span>
               </div>
-              {event.map_url && (
+              {openInMapsUrl && (
                 <a
-                  href={event.map_url.replace("output=embed", "")}
+                  href={openInMapsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-1 text-xs text-primary hover:underline font-medium"
@@ -301,6 +333,7 @@ export function EventDetailPanel({ event, onBack }: { event: OrganizerEvent; onB
                 <SessionRow
                   key={s.id}
                   session={s}
+                  ticketNos={ticketNos}
                   expanded={expandedSession === s.id}
                   onToggle={() => setExpandedSession(expandedSession === s.id ? null : s.id)}
                 />

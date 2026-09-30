@@ -476,7 +476,9 @@ export function CreateEventForm({
                 <div>
                   <h3 className="font-bold text-sm font-(family-name:--font-display)">Event Images</h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Upload photos for your event listing. The first new image becomes the cover.
+                    {existingImages.length > 0
+                      ? "Upload photos for your event listing. The first new image becomes the cover."
+                      : "Upload photos for your event listing. The first image is used as the cover."}
                   </p>
                 </div>
                 {existingImages.length > 0 && (

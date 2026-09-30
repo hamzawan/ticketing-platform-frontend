@@ -340,6 +340,8 @@ export type MyEventListItem = {
   venue: string;
   city: string | null;
   ticket_types_count: number;
+  // Not returned by the list API yet — see the sessions count on My Events cards.
+  sessions_count?: number;
   total_tickets: number;
   tickets_sold: number;
   status: string;
@@ -511,6 +513,35 @@ export async function getRefundRequests(
   }
 
   return res.json() as Promise<RefundRequestsResponse>;
+}
+
+async function postRefundDecision(
+  refundRequestId: string,
+  decision: "approve" | "reject",
+  token?: string | null,
+  body?: unknown,
+): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/refund-requests/${refundRequestId}/${decision}/`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+  });
+
+  if (!res.ok) {
+    throw new ApiError(await readErrorDetail(res, `Failed to ${decision} refund request. Please try again.`), res.status);
+  }
+}
+
+export function approveRefundRequest(refundRequestId: string, token?: string | null): Promise<void> {
+  return postRefundDecision(refundRequestId, "approve", token);
+}
+
+export function rejectRefundRequest(refundRequestId: string, reason: string, token?: string | null): Promise<void> {
+  return postRefundDecision(refundRequestId, "reject", token, { reason });
 }
 
 export async function publishEvent(eventId: string, token?: string | null): Promise<OrganizerEvent> {
