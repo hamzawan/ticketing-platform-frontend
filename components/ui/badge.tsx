@@ -12,6 +12,12 @@ const STATUS_STYLES: Record<string, string> = {
   processing: "bg-blue-50 text-blue-700 border-blue-200",
 };
 
+// The API's "ended" status reads better to organizers as "Completed" — the
+// underlying status value (used for filtering/styling) is unchanged.
+const STATUS_LABELS: Record<string, string> = {
+  ended: "Completed",
+};
+
 export function StatusBadge({ status }: { status: string }) {
   return (
     <span
@@ -19,7 +25,7 @@ export function StatusBadge({ status }: { status: string }) {
         STATUS_STYLES[status] ?? "bg-slate-100 text-slate-500 border-slate-200"
       }`}
     >
-      {status.replace("-", " ")}
+      {STATUS_LABELS[status] ?? status.replace("-", " ")}
     </span>
   );
 }

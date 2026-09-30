@@ -115,6 +115,7 @@ export function CreateEventForm({
   const [images, setImages] = useState<UploadedImage[]>([]);
 
   const [submitting, setSubmitting] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdEvent, setCreatedEvent] = useState<OrganizerEvent | null>(initialEvent ?? null);
 
@@ -197,6 +198,29 @@ export function CreateEventForm({
 
   function getAccessToken(): string | null {
     return typeof window !== "undefined" ? window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) : null;
+  }
+
+  async function handleSaveDraft() {
+    if (submitting || savingDraft) return;
+    setError(null);
+    if (!form.name.trim() || !form.venue.trim()) {
+      setError("Event name and venue are required to save a draft.");
+      return;
+    }
+    setSavingDraft(true);
+    try {
+      if (createdEvent) {
+        await updateEvent(createdEvent.id, buildPayload(), getAccessToken());
+      } else {
+        const created = await createEvent(buildPayload(), getAccessToken());
+        setCreatedEvent(created);
+      }
+      router.push("/organizer/events");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to save draft. Please try again.");
+    } finally {
+      setSavingDraft(false);
+    }
   }
 
   async function handleCreateEvent() {
@@ -466,10 +490,19 @@ export function CreateEventForm({
                 <ImageUploader images={images} onChange={setImages} />
               </div>
 
-              <div className="flex items-center justify-end gap-3">
+              <div className="flex items-center justify-between gap-3">
+                {!isEditMode && (
+                  <button
+                    onClick={handleSaveDraft}
+                    disabled={savingDraft}
+                    className="flex items-center gap-2 border border-border text-muted-foreground font-semibold px-5 py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
+                  >
+                    {savingDraft ? "Saving…" : "Save as Draft"}
+                  </button>
+                )}
                 <button
                   onClick={() => setStep(2)}
-                  className="flex items-center gap-2 bg-primary text-white font-semibold px-6 py-2.5 rounded-xl hover:bg-primary/90 transition-colors text-sm"
+                  className="flex items-center gap-2 bg-primary text-white font-semibold px-6 py-2.5 rounded-xl hover:bg-primary/90 transition-colors text-sm ml-auto"
                 >
                   Next: Sessions <ChevronRight size={14} />
                 </button>
@@ -526,12 +559,23 @@ export function CreateEventForm({
                 <Plus size={14} /> Add Another Session
               </button>
               <div className="flex items-center justify-between gap-3">
-                <button
-                  onClick={() => setStep(1)}
-                  className="flex items-center gap-2 border border-border font-semibold px-5 py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm"
-                >
-                  <ArrowLeft size={14} /> Back
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setStep(1)}
+                    className="flex items-center gap-2 border border-border font-semibold px-5 py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm"
+                  >
+                    <ArrowLeft size={14} /> Back
+                  </button>
+                  {!isEditMode && (
+                    <button
+                      onClick={handleSaveDraft}
+                      disabled={savingDraft}
+                      className="flex items-center gap-2 border border-border text-muted-foreground font-semibold px-5 py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
+                    >
+                      {savingDraft ? "Saving…" : "Save as Draft"}
+                    </button>
+                  )}
+                </div>
                 <button
                   onClick={() => {
                     sessions.forEach((s) => {
@@ -645,12 +689,23 @@ export function CreateEventForm({
               {error && <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-4 py-3">{error}</div>}
 
               <div className="flex items-center justify-between gap-3 pt-1">
-                <button
-                  onClick={() => setStep(2)}
-                  className="flex items-center gap-2 border border-border font-semibold px-5 py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm"
-                >
-                  <ArrowLeft size={14} /> Back
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setStep(2)}
+                    className="flex items-center gap-2 border border-border font-semibold px-5 py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm"
+                  >
+                    <ArrowLeft size={14} /> Back
+                  </button>
+                  {!isEditMode && (
+                    <button
+                      onClick={handleSaveDraft}
+                      disabled={savingDraft}
+                      className="flex items-center gap-2 border border-border text-muted-foreground font-semibold px-5 py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
+                    >
+                      {savingDraft ? "Saving…" : "Save as Draft"}
+                    </button>
+                  )}
+                </div>
                 <button
                   onClick={isEditMode ? goToReviewStep : handleCreateEvent}
                   disabled={submitting}
@@ -801,14 +856,25 @@ export function CreateEventForm({
                 >
                   <ArrowLeft size={14} /> Back
                 </button>
-                <button
-                  onClick={isEditMode ? handleUpdateEvent : createdEvent ? handlePublishEvent : handleCreateEvent}
-                  disabled={submitting}
-                  className="flex items-center gap-2 bg-emerald-500 text-white font-bold px-8 py-2.5 rounded-xl hover:bg-emerald-600 transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
-                >
-                  <Check size={14} />
-                  {isEditMode ? (submitting ? "Saving…" : "Save Changes") : submitting ? "Publishing…" : "Publish Event"}
-                </button>
+                <div className="flex items-center gap-2">
+                  {!isEditMode && (
+                    <button
+                      onClick={handleSaveDraft}
+                      disabled={savingDraft}
+                      className="flex items-center gap-2 border border-border text-muted-foreground font-semibold px-5 py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
+                    >
+                      {savingDraft ? "Saving…" : "Save as Draft"}
+                    </button>
+                  )}
+                  <button
+                    onClick={isEditMode ? handleUpdateEvent : createdEvent ? handlePublishEvent : handleCreateEvent}
+                    disabled={submitting}
+                    className="flex items-center gap-2 bg-emerald-500 text-white font-bold px-8 py-2.5 rounded-xl hover:bg-emerald-600 transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
+                  >
+                    <Check size={14} />
+                    {isEditMode ? (submitting ? "Saving…" : "Save Changes") : submitting ? "Publishing…" : "Publish Event"}
+                  </button>
+                </div>
               </div>
             </>
           )}

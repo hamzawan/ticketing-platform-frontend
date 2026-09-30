@@ -490,7 +490,7 @@ export default function OrganizerAuthPage() {
             <p className="text-muted-foreground text-sm">
               {mode === "signup"
                 ? "Enter your email and choose a password to get started."
-                : "Sign in to your organizer account to continue."}
+                : "Sign in to your dashboard to continue."}
             </p>
           </div>
 
@@ -521,7 +521,7 @@ export default function OrganizerAuthPage() {
                   label="Email Address"
                   id="su-email"
                   type="email"
-                  placeholder="you@organization.com"
+                  placeholder="you@example.com"
                   value={suEmail}
                   onChange={setSuEmail}
                   icon={Mail}
@@ -599,7 +599,7 @@ export default function OrganizerAuthPage() {
                       label="Email address"
                       id="forgot-email"
                       type="email"
-                      placeholder="you@organization.com"
+                      placeholder="you@example.com"
                       value={forgotEmail}
                       onChange={setForgotEmail}
                       icon={Mail}
@@ -629,7 +629,7 @@ export default function OrganizerAuthPage() {
                   label="Email Address"
                   id="li-email"
                   type="email"
-                  placeholder="you@organization.com"
+                  placeholder="you@example.com"
                   value={liEmail}
                   onChange={setLiEmail}
                   icon={Mail}
@@ -680,7 +680,7 @@ export default function OrganizerAuthPage() {
                       <RefreshCw size={14} className="animate-spin" /> Signing in…
                     </span>
                   ) : (
-                    "Sign In to Organizer Portal"
+                    "Sign In"
                   )}
                 </button>
               </form>

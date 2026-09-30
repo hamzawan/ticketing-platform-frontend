@@ -24,7 +24,7 @@ const STATUS_FILTERS = [
   { value: "all", label: "All" },
   { value: "on-sale", label: "On Sale" },
   { value: "draft", label: "Draft" },
-  { value: "ended", label: "Ended" },
+  { value: "ended", label: "Completed" },
 ] as const;
 
 type DisplayEvent = {
@@ -40,6 +40,17 @@ type DisplayEvent = {
   image: string;
 };
 
+// Maps the API's event status values to the internal status keys the
+// filter pills / StatusBadge style map key off. The API uses "completed"
+// for a finished event, which this app displays as "ended" internally
+// (StatusBadge then labels it "Completed" with the gray/finished style) —
+// keeping that separate from "completed" as used elsewhere (e.g. refunds)
+// which should stay the green/success style.
+function normalizeEventStatus(status: string): string {
+  if (status === "completed") return "ended";
+  return status.replace(/_/g, "-");
+}
+
 function toDisplayEvents(events: MyEventListItem[]): DisplayEvent[] {
   return events.map((e) => ({
     id: e.id,
@@ -47,8 +58,7 @@ function toDisplayEvents(events: MyEventListItem[]): DisplayEvent[] {
     date: formatEventDate(e.event_date),
     venue: e.venue,
     city: e.city ?? "",
-    // API uses "on_sale" — StatusBadge's style map keys off "on-sale".
-    status: e.status.replace(/_/g, "-"),
+    status: normalizeEventStatus(e.status),
     capacity: e.total_tickets,
     sold: e.tickets_sold,
     ticketTypeCount: e.ticket_types_count,
