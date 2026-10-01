@@ -103,8 +103,10 @@ async function readErrorDetail(res: Response, fallback: string): Promise<string>
     if (typeof data?.detail === "string" && data.detail.trim()) return data.detail;
 
     // FastAPI validation errors: { detail: [{ loc: ["body", "field"], msg, type }, ...] }
-    if (Array.isArray(data?.detail)) {
-      const messages = (data.detail as unknown[])
+    // Some endpoints return the bare error array with no `detail` wrapper.
+    const validationItems: unknown = Array.isArray(data) ? data : data?.detail;
+    if (Array.isArray(validationItems)) {
+      const messages = (validationItems as unknown[])
         .map((item) => {
           if (!item || typeof item !== "object") return null;
           const { loc, msg } = item as { loc?: unknown[]; msg?: string };
@@ -466,6 +468,79 @@ export async function updateEvent(
   return res.json() as Promise<OrganizerEvent>;
 }
 
+export async function deleteTicketType(eventId: string, ticketTypeId: string, token?: string | null): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/events/${eventId}/ticket-types/${ticketTypeId}/`, {
+    method: "DELETE",
+    headers: {
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!res.ok) {
+    throw new ApiError(await readErrorDetail(res, "Failed to delete ticket type. Please try again."), res.status);
+  }
+}
+
+export type SessionDraft = {
+  id?: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  ticketTypes: { id?: string; name: string; price: string; quantity: number }[];
+};
+
+// Saves the event's full session list through the update endpoint (there is
+// no dedicated slot / ticket-type endpoint). Mirrors the create form's
+// payload rules: the API rejects `ticket_types` and `sessions` together, so
+// more than one session travels nested in `sessions`, a single session uses
+// the flat `ticket_types` field.
+export async function saveEventSessions(
+  event: OrganizerEvent,
+  sessions: SessionDraft[],
+  token?: string | null,
+): Promise<OrganizerEvent> {
+  const first = sessions[0];
+  const isMultiSession = sessions.length > 1;
+  const mapTicket = (t: SessionDraft["ticketTypes"][number]) => ({
+    ...(t.id ? { id: t.id } : {}),
+    name: t.name,
+    price: t.price,
+    quantity: t.quantity,
+  });
+  return updateEvent(
+    event.id,
+    {
+      name: event.name,
+      venue: event.venue,
+      event_date: first?.date ?? event.event_date,
+      start_time: first?.startTime ?? event.start_time,
+      end_time: first?.endTime ?? event.end_time,
+      ticket_types:
+        !isMultiSession && first?.ticketTypes.length ? JSON.stringify(first.ticketTypes.map(mapTicket)) : null,
+      sessions: isMultiSession
+        ? JSON.stringify(
+            sessions.map((s) => ({
+              ...(s.id ? { id: s.id } : {}),
+              session_date: s.date,
+              start_time: s.startTime,
+              end_time: s.endTime,
+              ticket_types: s.ticketTypes.map(mapTicket),
+            })),
+          )
+        : null,
+      description: event.description || null,
+      city: event.city || null,
+      address: event.address || null,
+      map_url: event.map_url || null,
+      min_age: event.min_age,
+      max_age: event.max_age,
+      images: [],
+    },
+    token,
+  );
+}
+
 export type RefundRequestItem = {
   id: string;
   event_id: string;
@@ -574,4 +649,51 @@ export async function publishEvent(eventId: string, token?: string | null): Prom
   }
 
   return res.json() as Promise<OrganizerEvent>;
+}
+
+export type BookingItem = {
+  booking_number: string;
+  customer_name: string;
+  customer_email: string;
+  event_name: string;
+  // Not guaranteed to be plain strings — see formatBookingTicketTypes().
+  ticket_types: unknown;
+  tickets_count: number;
+  total_amount: string | number;
+  status: string;
+  created_at: string;
+};
+
+export type BookingsResponse = {
+  page: number;
+  page_size: number;
+  total: number;
+  results: BookingItem[];
+};
+
+export async function getBookings(page = 1, token?: string | null): Promise<BookingsResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/bookings/list/?page=${page}`, {
+    cache: "no-store",
+    headers: {
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!res.ok) {
+    throw new ApiError(await readErrorDetail(res, "Failed to load bookings."), res.status);
+  }
+
+  return res.json() as Promise<BookingsResponse>;
+}
+
+// `ticket_types` may arrive as a string, a list of names, or a list of
+// { name } objects; show them as one comma-separated label.
+export function formatBookingTicketTypes(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (!Array.isArray(value)) return "—";
+  const names = value
+    .map((v) => (typeof v === "string" ? v : typeof (v as { name?: unknown } | null)?.name === "string" ? (v as { name: string }).name : null))
+    .filter((n): n is string => Boolean(n));
+  return names.length ? names.join(", ") : "—";
 }

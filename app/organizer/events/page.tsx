@@ -193,7 +193,7 @@ export default function MyEventsPage() {
             </button>
           </div>
         )}
-        {detailStatus === "ready" && detail && <EventDetailPanel event={detail} onBack={() => setSelectedId(null)} />}
+        {detailStatus === "ready" && detail && <EventDetailPanel event={detail} onBack={() => setSelectedId(null)} onChanged={setDetail} />}
       </div>
     );
   }
