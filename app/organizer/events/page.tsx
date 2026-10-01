@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Calendar, ChevronRight, MapPin, Plus, Search } from "lucide-react";
+import { BookOpen, Calendar, ChevronRight, MapPin, Plus, Search } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/badge";
 import { EventDetailPanel } from "@/components/organizer/event-detail-panel";
@@ -10,6 +10,7 @@ import { MyEventsSkeleton } from "@/components/organizer/events-skeleton";
 import {
   ACCESS_TOKEN_STORAGE_KEY,
   formatEventDate,
+  getEvent,
   getEvents,
   getMyEvents,
   resolveMediaUrl,
@@ -137,13 +138,8 @@ export default function MyEventsPage() {
     async function loadDetail() {
       setDetailStatus("loading");
       try {
-        const all = await getEvents(getStoredToken());
-        const found = all.find((e) => e.id === selectedId) ?? null;
+        const found = await getEvent(selectedId!, getStoredToken());
         if (cancelled) return;
-        if (!found) {
-          setDetailStatus("error");
-          return;
-        }
         setDetail(found);
         setDetailStatus("ready");
       } catch {
@@ -243,10 +239,18 @@ export default function MyEventsPage() {
       ) : (
         <div className="grid gap-3">
           {filtered.map((e) => (
-            <button
+            <div
               key={e.id}
+              role="button"
+              tabIndex={0}
               onClick={() => setSelectedId(e.id)}
-              className="bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/40 transition-all text-left group"
+              onKeyDown={(ev) => {
+                if (ev.target === ev.currentTarget && (ev.key === "Enter" || ev.key === " ")) {
+                  ev.preventDefault();
+                  setSelectedId(e.id);
+                }
+              }}
+              className="bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/40 transition-all text-left group cursor-pointer"
             >
               <div className="flex flex-col sm:flex-row">
                 <div className="w-full sm:w-32 h-[110px] sm:h-auto flex-shrink-0 bg-secondary relative overflow-hidden">
@@ -299,11 +303,18 @@ export default function MyEventsPage() {
                     {e.revenue > 0 && <span className="text-xs font-bold flex-shrink-0">${e.revenue.toLocaleString()}</span>}
                   </div>
                 </div>
-                <div className="flex items-center pr-4 flex-shrink-0">
+                <div className="flex items-center gap-2 pr-4 flex-shrink-0">
+                  <Link
+                    href={`/organizer/bookings?event=${e.id}`}
+                    onClick={(ev) => ev.stopPropagation()}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-primary border border-primary/20 bg-primary/5 px-3 py-1.5 rounded-lg hover:bg-primary/15 transition-colors opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                  >
+                    <BookOpen size={11} /> Bookings
+                  </Link>
                   <ChevronRight size={16} className="text-muted-foreground group-hover:text-primary transition-colors" />
                 </div>
               </div>
-            </button>
+            </div>
           ))}
           {filtered.length === 0 && <div className="text-center py-12 text-sm text-muted-foreground">No events match your search.</div>}
         </div>

@@ -8,6 +8,7 @@ import {
   Calendar,
   Plus,
   RefreshCw,
+  BookOpen,
   LogOut,
   Menu,
   X,
@@ -19,6 +20,7 @@ const NAV_ITEMS = [
   { href: "/organizer", label: "Dashboard", Icon: LayoutDashboard },
   { href: "/organizer/events", label: "My Events", Icon: Calendar },
   { href: "/organizer/events/create", label: "Create Event", Icon: Plus },
+  { href: "/organizer/bookings", label: "Bookings", Icon: BookOpen },
   { href: "/organizer/refunds", label: "Refunds", Icon: RefreshCw },
 ];
 

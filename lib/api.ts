@@ -331,6 +331,22 @@ export async function getEvents(token?: string | null): Promise<OrganizerEvent[]
   return res.json() as Promise<OrganizerEvent[]>;
 }
 
+export async function getEvent(eventId: string, token?: string | null): Promise<OrganizerEvent> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/events/${eventId}/retrieve/`, {
+    cache: "no-store",
+    headers: {
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!res.ok) {
+    throw new ApiError(await readErrorDetail(res, "Failed to load event."), res.status);
+  }
+
+  return res.json() as Promise<OrganizerEvent>;
+}
+
 export type MyEventListItem = {
   id: string;
   name: string;
