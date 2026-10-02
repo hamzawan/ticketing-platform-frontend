@@ -286,6 +286,7 @@ export function formatEventDate(dateStr: string): string {
 export type EventTicketType = {
   id: string;
   session_id: string;
+  ticket_type_code?: string;
   name: string;
   price: string;
   quantity: number;

@@ -26,7 +26,9 @@ type PanelSession = {
   startTime: string | null;
   endTime: string | null;
   ticketTypes: EventTicketType[];
-  // Placeholder display number (1, 2, 3…) until the API provides readable IDs.
+  // Readable code from the API (e.g. "ses-001").
+  code: string | null;
+  // Fallback display number (1, 2, 3…) when the API sends no code.
   displayNo: number;
   // false when the id is synthesised (no real session id from the API).
   persisted: boolean;
@@ -86,6 +88,7 @@ export function getSessions(event: OrganizerEvent): PanelSession[] {
     startTime: event.start_time,
     endTime: event.end_time,
     ticketTypes: event.ticket_types,
+    code: null,
     displayNo: 1,
     persisted: false,
   };
@@ -101,6 +104,7 @@ export function getSessions(event: OrganizerEvent): PanelSession[] {
       startTime: asString(s.start_time) ?? event.start_time,
       endTime: asString(s.end_time) ?? event.end_time,
       ticketTypes: nested ?? event.ticket_types.filter((t) => t.session_id === id),
+      code: asString(s.session_code),
       displayNo: i + 1,
       persisted: asString(s.id) !== null,
     };
@@ -182,7 +186,7 @@ function TicketTypesTable({
               const low = tt.quantity > 0 && tt.available_quantity / tt.quantity < 0.15;
               return (
                 <tr key={tt.id} className="border-b border-border/50 last:border-0 hover:bg-secondary/20 transition-colors">
-                  <td className="px-5 py-2.5 font-mono text-[10px] text-muted-foreground">{ticketNos.get(tt.id)}</td>
+                  <td className="px-5 py-2.5 font-mono text-[10px] text-muted-foreground">{tt.ticket_type_code ?? ticketNos.get(tt.id)}</td>
                   <td className="px-5 py-2.5 font-semibold">{tt.name}</td>
                   <td className="px-5 py-2.5 font-semibold">${tt.price}</td>
                   <td className="px-5 py-2.5 text-muted-foreground">{tt.quantity.toLocaleString()}</td>
@@ -292,7 +296,7 @@ function SessionRow({
           )}
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
-          <span className="font-mono text-[10px] text-muted-foreground hidden md:block">{session.displayNo}</span>
+          <span className="font-mono text-[10px] text-muted-foreground hidden md:block">{session.code ?? session.displayNo}</span>
           {editable && (
             <button
               type="button"
