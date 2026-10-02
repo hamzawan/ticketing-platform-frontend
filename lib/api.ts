@@ -468,6 +468,61 @@ export async function updateEvent(
   return res.json() as Promise<OrganizerEvent>;
 }
 
+// API expects HH:MM:SS; <input type="time"> yields HH:MM.
+function toApiTime(t: string): string {
+  return /^\d{2}:\d{2}$/.test(t) ? `${t}:00` : t;
+}
+
+export async function createSession(
+  eventId: string,
+  payload: {
+    session_date: string;
+    start_time: string;
+    end_time: string;
+    ticket_types: { name: string; price: number; quantity: number }[];
+  },
+  token?: string | null,
+): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/events/${eventId}/sessions/`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      ...payload,
+      start_time: toApiTime(payload.start_time),
+      end_time: toApiTime(payload.end_time),
+    }),
+  });
+
+  if (!res.ok) {
+    throw new ApiError(await readErrorDetail(res, "Failed to add slot. Please try again."), res.status);
+  }
+}
+
+export async function updateTicketType(
+  eventId: string,
+  ticketTypeId: string,
+  payload: { name: string; price: number; quantity: number },
+  token?: string | null,
+): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/events/${eventId}/ticket-types/${ticketTypeId}/`, {
+    method: "PUT",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    throw new ApiError(await readErrorDetail(res, "Failed to update ticket type. Please try again."), res.status);
+  }
+}
+
 export async function deleteTicketType(eventId: string, ticketTypeId: string, token?: string | null): Promise<void> {
   const res = await fetch(`${API_BASE_URL}/api/v1/events/${eventId}/ticket-types/${ticketTypeId}/`, {
     method: "DELETE",

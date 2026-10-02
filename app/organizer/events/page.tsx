@@ -5,13 +5,12 @@ import Link from "next/link";
 import { BookOpen, Calendar, ChevronRight, MapPin, Plus, Search } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/badge";
-import { EventDetailPanel } from "@/components/organizer/event-detail-panel";
+import { EventDetailPanel, getSessions } from "@/components/organizer/event-detail-panel";
 import { MyEventsSkeleton } from "@/components/organizer/events-skeleton";
 import {
   ACCESS_TOKEN_STORAGE_KEY,
   formatEventDate,
   getEvent,
-  getEvents,
   getMyEvents,
   resolveMediaUrl,
   type MyEventListItem,
@@ -38,7 +37,7 @@ type DisplayEvent = {
   capacity: number;
   sold: number;
   sessionCount: number;
-  // Revenue from sold tickets; derived from the full event records (not in the list API).
+  // Not in the list API yet, so cards hide it until the backend adds it.
   revenue: number;
   image: string;
 };
@@ -64,7 +63,6 @@ function toDisplayEvents(events: MyEventListItem[]): DisplayEvent[] {
     status: normalizeEventStatus(e.status),
     capacity: e.total_tickets,
     sold: e.tickets_sold,
-    // Temporary: the list API has no session count yet, so assume one session.
     sessionCount: e.sessions_count ?? 1,
     revenue: 0,
     image: resolveMediaUrl(e.first_image) ?? FALLBACK_IMAGE,
@@ -86,36 +84,21 @@ export default function MyEventsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<OrganizerEvent | null>(null);
   const [detailStatus, setDetailStatus] = useState<"loading" | "ready" | "error">("loading");
+  // Set when the details panel changed the event, so the list refetches on return.
+  const [listStale, setListStale] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
-      setStatus("loading");
+      // Reloads after an edit keep the current cards on screen instead of flashing a skeleton.
+      if (reloadKey === 0) setStatus("loading");
       try {
         const data = await getMyEvents(getStoredToken());
         if (!cancelled) {
           setEvents(toDisplayEvents(data.results));
           setStatus("ready");
-        }
-        // The my-events list has no session count, so take it from the full
-        // event records (same source the details panel uses). Best effort —
-        // cards keep their default until it arrives, or if it fails.
-        try {
-          const all = await getEvents(getStoredToken());
-          if (cancelled) return;
-          const extra = new Map(
-            all.map((e) => [
-              e.id,
-              {
-                sessionCount: Array.isArray(e.sessions) && e.sessions.length > 0 ? e.sessions.length : 1,
-                revenue: e.ticket_types.reduce((sum, t) => sum + Number(t.price || 0) * (t.quantity - t.available_quantity), 0),
-              },
-            ]),
-          );
-          setEvents((prev) => prev.map((e) => ({ ...e, ...extra.get(e.id) })));
-        } catch {
-          // keep default session counts
         }
       } catch (err) {
         if (!cancelled) {
@@ -129,7 +112,38 @@ export default function MyEventsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadKey]);
+
+  function handleBack() {
+    setSelectedId(null);
+    if (listStale) {
+      // Show the new numbers immediately from the up-to-date detail record;
+      // the refetch below then confirms them from the list API.
+      if (detail) {
+        const tts = detail.ticket_types;
+        const capacity = tts.reduce((sum, t) => sum + t.quantity, 0);
+        setEvents((prev) =>
+          prev.map((e) =>
+            e.id === detail.id
+              ? {
+                  ...e,
+                  sessionCount: getSessions(detail).length,
+                  capacity,
+                  sold: capacity - tts.reduce((sum, t) => sum + t.available_quantity, 0),
+                }
+              : e,
+          ),
+        );
+      }
+      setListStale(false);
+      setReloadKey((k) => k + 1);
+    }
+  }
+
+  function handleChanged(updated: OrganizerEvent) {
+    setDetail(updated);
+    setListStale(true);
+  }
 
   useEffect(() => {
     if (!selectedId) return;
@@ -193,7 +207,7 @@ export default function MyEventsPage() {
             </button>
           </div>
         )}
-        {detailStatus === "ready" && detail && <EventDetailPanel event={detail} onBack={() => setSelectedId(null)} onChanged={setDetail} />}
+        {detailStatus === "ready" && detail && <EventDetailPanel event={detail} onBack={handleBack} onChanged={handleChanged} />}
       </div>
     );
   }

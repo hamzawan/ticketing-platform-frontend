@@ -7,10 +7,12 @@ import { StatusBadge } from "@/components/ui/badge";
 import {
   ACCESS_TOKEN_STORAGE_KEY,
   ApiError,
+  createSession,
   deleteTicketType,
   extractImageUrl,
   getEvent,
   saveEventSessions,
+  updateTicketType,
   type EventTicketType,
   type OrganizerEvent,
   type SessionDraft,
@@ -30,7 +32,7 @@ type PanelSession = {
   persisted: boolean;
 };
 
-type Modal = { kind: "slot"; date: string } | { kind: "type"; sessionId: string } | { kind: "delete"; ticket: EventTicketType };
+type Modal = { kind: "slot"; date: string } | { kind: "type"; sessionId: string } | { kind: "delete"; ticket: EventTicketType } | { kind: "edit"; ticket: EventTicketType };
 
 const inp =
   "w-full bg-background border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground";
@@ -77,7 +79,7 @@ function asString(v: unknown): string | null {
 
 // The API's `sessions` array is loosely typed; fall back to the event's own
 // date/time/ticket types when it's empty or unrecognisable.
-function getSessions(event: OrganizerEvent): PanelSession[] {
+export function getSessions(event: OrganizerEvent): PanelSession[] {
   const fallback: PanelSession = {
     id: event.id,
     date: event.event_date,
@@ -122,12 +124,14 @@ function TicketTypesTable({
   editable,
   onAddType,
   onDeleteType,
+  onEditType,
 }: {
   ticketTypes: EventTicketType[];
   ticketNos: Map<string, number>;
   editable: boolean;
   onAddType: () => void;
   onDeleteType: (tt: EventTicketType) => void;
+  onEditType: (tt: EventTicketType) => void;
 }) {
   if (ticketTypes.length === 0) {
     return (
@@ -199,6 +203,7 @@ function TicketTypesTable({
                         <button
                           type="button"
                           aria-label={`Edit ${tt.name}`}
+                          onClick={() => onEditType(tt)}
                           className="text-muted-foreground hover:text-foreground transition-colors"
                         >
                           <Edit2 size={11} />
@@ -232,6 +237,7 @@ function SessionRow({
   editable,
   onAddType,
   onDeleteType,
+  onEditType,
 }: {
   session: PanelSession;
   ticketNos: Map<string, number>;
@@ -240,6 +246,7 @@ function SessionRow({
   editable: boolean;
   onAddType: () => void;
   onDeleteType: (tt: EventTicketType) => void;
+  onEditType: (tt: EventTicketType) => void;
 }) {
   const tts = session.ticketTypes;
   const totalQty = tts.reduce((s, t) => s + t.quantity, 0);
@@ -299,7 +306,7 @@ function SessionRow({
           <ChevronDown size={13} className={`text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />
         </div>
       </div>
-      {expanded && <TicketTypesTable ticketTypes={tts} ticketNos={ticketNos} editable={editable} onAddType={onAddType} onDeleteType={onDeleteType} />}
+      {expanded && <TicketTypesTable ticketTypes={tts} ticketNos={ticketNos} editable={editable} onAddType={onAddType} onDeleteType={onDeleteType} onEditType={onEditType} />}
     </div>
   );
 }
@@ -525,6 +532,42 @@ function AddTypeModal({
   );
 }
 
+function EditTypeModal({
+  ticket: original,
+  saving,
+  error,
+  onClose,
+  onSave,
+}: {
+  ticket: EventTicketType;
+  saving: boolean;
+  error: string | null;
+  onClose: () => void;
+  onSave: (v: NewTicketType) => void;
+}) {
+  const [ticket, setTicket] = useState<TicketFieldsValue>({
+    name: original.name,
+    price: String(original.price),
+    qty: String(original.quantity),
+  });
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  function submit() {
+    const parsed = parseTicketFields(ticket);
+    if (typeof parsed === "string") return setLocalError(parsed);
+    const sold = original.quantity - original.available_quantity;
+    if (parsed.quantity < sold) return setLocalError(`Quantity can't be lower than the ${sold} ticket${sold !== 1 ? "s" : ""} already sold.`);
+    setLocalError(null);
+    onSave(parsed);
+  }
+
+  return (
+    <ModalShell title="Edit Ticket Type" saving={saving} error={localError ?? error} onClose={onClose} onSubmit={submit} submitLabel="Save Changes">
+      <TicketFields value={ticket} onChange={setTicket} autoFocus />
+    </ModalShell>
+  );
+}
+
 export function EventDetailPanel({
   event,
   onBack,
@@ -557,6 +600,13 @@ export function EventDetailPanel({
   }
 
   async function save(next: SessionDraft[], successMessage: string, expandId?: string) {
+    // The API rejects a multi-session event if any session has no ticket types
+    // (common on drafts), so say which one to fix instead of showing a raw 422.
+    const empty = next.length > 1 ? next.find((d) => d.ticketTypes.length === 0) : undefined;
+    if (empty) {
+      setSaveError(`The slot on ${fmtDateLong(empty.date)} (${fmtTime(empty.startTime)}) has no ticket types. Add a ticket type to it first, then try again.`);
+      return;
+    }
     setSaving(true);
     setSaveError(null);
     try {
@@ -568,6 +618,26 @@ export function EventDetailPanel({
       if (expandId) setExpandedSession(expandId);
       setModal(null);
       setToast({ type: "success", message: successMessage });
+    } catch (err) {
+      setSaveError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleEditType(ticket: EventTicketType, v: NewTicketType) {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const token = typeof window !== "undefined" ? window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) : null;
+      await updateTicketType(event.id, ticket.id, { name: v.name, price: Number(v.price), quantity: v.quantity }, token);
+      setModal(null);
+      setToast({ type: "success", message: `Ticket type "${v.name}" updated.` });
+      try {
+        onChanged?.(await getEvent(event.id, token));
+      } catch {
+        setToast({ type: "error", message: `"${v.name}" was updated, but the page couldn't refresh. Please reload.` });
+      }
     } catch (err) {
       setSaveError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     } finally {
@@ -595,10 +665,35 @@ export function EventDetailPanel({
     }
   }
 
-  function handleAddSlot(v: { date: string; startTime: string; endTime: string; ticket: NewTicketType }) {
-    const drafts = sessions.map(toDraft);
-    const { ticket, ...slot } = v;
-    save([...drafts, { ...slot, ticketTypes: [ticket] }], "Slot added.");
+  // Posts only the new slot; existing sessions are left untouched, so empty
+  // sessions on a draft no longer block adding one.
+  async function handleAddSlot(v: { date: string; startTime: string; endTime: string; ticket: NewTicketType }) {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const token = typeof window !== "undefined" ? window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) : null;
+      await createSession(
+        event.id,
+        {
+          session_date: v.date,
+          start_time: v.startTime,
+          end_time: v.endTime,
+          ticket_types: [{ name: v.ticket.name, price: Number(v.ticket.price), quantity: v.ticket.quantity }],
+        },
+        token,
+      );
+      setModal(null);
+      setToast({ type: "success", message: "Slot added." });
+      try {
+        onChanged?.(await getEvent(event.id, token));
+      } catch {
+        setToast({ type: "error", message: "Slot was added, but the page couldn't refresh. Please reload." });
+      }
+    } catch (err) {
+      setSaveError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleAddType(sessionId: string, v: NewTicketType) {
@@ -784,6 +879,7 @@ export function EventDetailPanel({
                   editable={editable}
                   onAddType={() => setModal({ kind: "type", sessionId: s.id })}
                   onDeleteType={(ticket) => setModal({ kind: "delete", ticket })}
+                  onEditType={(ticket) => setModal({ kind: "edit", ticket })}
                 />
               ))}
             </div>
@@ -796,6 +892,9 @@ export function EventDetailPanel({
       )}
       {modal?.kind === "type" && (
         <AddTypeModal saving={saving} error={saveError} onClose={closeModal} onSave={(v) => handleAddType(modal.sessionId, v)} />
+      )}
+      {modal?.kind === "edit" && (
+        <EditTypeModal ticket={modal.ticket} saving={saving} error={saveError} onClose={closeModal} onSave={(v) => handleEditType(modal.ticket, v)} />
       )}
       {modal?.kind === "delete" && (
         <ModalShell
