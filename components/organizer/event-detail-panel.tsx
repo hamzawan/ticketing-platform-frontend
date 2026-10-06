@@ -10,6 +10,7 @@ import {
   createSession,
   createTicketType,
   deleteTicketType,
+  updateSession,
   extractImageUrl,
   getEvent,
   saveEventSessions,
@@ -35,7 +36,7 @@ type PanelSession = {
   persisted: boolean;
 };
 
-type Modal = { kind: "slot"; date: string } | { kind: "type"; sessionId: string } | { kind: "delete"; ticket: EventTicketType } | { kind: "edit"; ticket: EventTicketType };
+type Modal = { kind: "slot"; date: string } | { kind: "type"; sessionId: string } | { kind: "delete"; ticket: EventTicketType } | { kind: "edit"; ticket: EventTicketType } | { kind: "editSession"; session: PanelSession };
 
 const inp =
   "w-full bg-background border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground";
@@ -243,6 +244,7 @@ function SessionRow({
   onAddType,
   onDeleteType,
   onEditType,
+  onEditSession,
 }: {
   session: PanelSession;
   ticketNos: Map<string, number>;
@@ -252,6 +254,7 @@ function SessionRow({
   onAddType: () => void;
   onDeleteType: (tt: EventTicketType) => void;
   onEditType: (tt: EventTicketType) => void;
+  onEditSession: () => void;
 }) {
   const tts = session.ticketTypes;
   const totalQty = tts.reduce((s, t) => s + t.quantity, 0);
@@ -298,11 +301,14 @@ function SessionRow({
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
           <span className="font-mono text-[10px] text-muted-foreground hidden md:block">{session.code ?? session.displayNo}</span>
-          {editable && (
+          {editable && session.persisted && (
             <button
               type="button"
               aria-label="Edit session"
-              onClick={(ev) => ev.stopPropagation()}
+              onClick={(ev) => {
+                ev.stopPropagation();
+                onEditSession();
+              }}
               className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded hover:bg-secondary"
             >
               <Edit2 size={12} />
@@ -505,6 +511,52 @@ function AddSlotModal({
   );
 }
 
+function EditSessionModal({
+  session,
+  saving,
+  error,
+  onClose,
+  onSave,
+}: {
+  session: PanelSession;
+  saving: boolean;
+  error: string | null;
+  onClose: () => void;
+  onSave: (v: { date: string; startTime: string; endTime: string }) => void;
+}) {
+  const [date, setDate] = useState(session.date);
+  // The API returns HH:MM:SS; <input type="time"> wants HH:MM.
+  const [startTime, setStartTime] = useState((session.startTime ?? "").slice(0, 5));
+  const [endTime, setEndTime] = useState((session.endTime ?? "").slice(0, 5));
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  function submit() {
+    if (!date || !startTime || !endTime) return setLocalError("Date, start time, and end time are required.");
+    if (endTime <= startTime) return setLocalError("End time must be after the start time.");
+    setLocalError(null);
+    onSave({ date, startTime, endTime });
+  }
+
+  return (
+    <ModalShell title="Edit Session" saving={saving} error={localError ?? error} onClose={onClose} onSubmit={submit} submitLabel="Save Changes">
+      <div>
+        <label className={lbl}>Date</label>
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inp} />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={lbl}>Start Time</label>
+          <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inp} />
+        </div>
+        <div>
+          <label className={lbl}>End Time</label>
+          <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className={inp} />
+        </div>
+      </div>
+    </ModalShell>
+  );
+}
+
 function AddTypeModal({
   saving,
   error,
@@ -642,6 +694,26 @@ export function EventDetailPanel({
         onChanged?.(await getEvent(event.id, token));
       } catch {
         setToast({ type: "error", message: `"${v.name}" was updated, but the page couldn't refresh. Please reload.` });
+      }
+    } catch (err) {
+      setSaveError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleEditSession(session: PanelSession, v: { date: string; startTime: string; endTime: string }) {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const token = typeof window !== "undefined" ? window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) : null;
+      await updateSession(event.id, session.id, { session_date: v.date, start_time: v.startTime, end_time: v.endTime }, token);
+      setModal(null);
+      setToast({ type: "success", message: "Session updated." });
+      try {
+        onChanged?.(await getEvent(event.id, token));
+      } catch {
+        setToast({ type: "error", message: "Session was updated, but the page couldn't refresh. Please reload." });
       }
     } catch (err) {
       setSaveError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
@@ -920,6 +992,7 @@ export function EventDetailPanel({
                   onAddType={() => setModal({ kind: "type", sessionId: s.id })}
                   onDeleteType={(ticket) => setModal({ kind: "delete", ticket })}
                   onEditType={(ticket) => setModal({ kind: "edit", ticket })}
+                  onEditSession={() => setModal({ kind: "editSession", session: s })}
                 />
               ))}
             </div>
@@ -935,6 +1008,9 @@ export function EventDetailPanel({
       )}
       {modal?.kind === "edit" && (
         <EditTypeModal ticket={modal.ticket} saving={saving} error={saveError} onClose={closeModal} onSave={(v) => handleEditType(modal.ticket, v)} />
+      )}
+      {modal?.kind === "editSession" && (
+        <EditSessionModal session={modal.session} saving={saving} error={saveError} onClose={closeModal} onSave={(v) => handleEditSession(modal.session, v)} />
       )}
       {modal?.kind === "delete" && (
         <ModalShell

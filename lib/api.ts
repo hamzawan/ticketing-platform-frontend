@@ -503,6 +503,31 @@ export async function createSession(
   }
 }
 
+export async function updateSession(
+  eventId: string,
+  sessionId: string,
+  payload: { session_date: string; start_time: string; end_time: string },
+  token?: string | null,
+): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/events/${eventId}/sessions/${sessionId}/`, {
+    method: "PUT",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      ...payload,
+      start_time: toApiTime(payload.start_time),
+      end_time: toApiTime(payload.end_time),
+    }),
+  });
+
+  if (!res.ok) {
+    throw new ApiError(await readErrorDetail(res, "Failed to update session. Please try again."), res.status);
+  }
+}
+
 export async function createTicketType(
   eventId: string,
   payload: { name: string; price: number; quantity: number; session_id: string },
