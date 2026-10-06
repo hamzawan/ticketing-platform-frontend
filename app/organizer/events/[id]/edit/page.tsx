@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ACCESS_TOKEN_STORAGE_KEY, getEvents, type OrganizerEvent } from "@/lib/api";
+import { ACCESS_TOKEN_STORAGE_KEY, getEvent, type OrganizerEvent } from "@/lib/api";
 import { CreateEventForm } from "../../create/create-event-form";
 
 export default function EditEventPage() {
@@ -20,15 +20,9 @@ export default function EditEventPage() {
       try {
         const token =
           typeof window !== "undefined" ? window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) : null;
-        const events = await getEvents(token);
-        const found = events.find((e) => e.id === id) ?? null;
+        // Retrieve by ID: the list endpoint doesn't include draft events.
+        const found = await getEvent(id, token);
         if (cancelled) return;
-
-        if (!found) {
-          setErrorMessage("Event not found.");
-          setStatus("error");
-          return;
-        }
 
         setEvent(found);
         setStatus("ready");

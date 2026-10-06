@@ -503,6 +503,28 @@ export async function createSession(
   }
 }
 
+export async function createTicketType(
+  eventId: string,
+  payload: { name: string; price: number; quantity: number; session_id: string },
+  token?: string | null,
+): Promise<EventTicketType> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/events/${eventId}/ticket-types/`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    throw new ApiError(await readErrorDetail(res, "Failed to add ticket type. Please try again."), res.status);
+  }
+  const created = (await res.json()) as EventTicketType;
+  return { ...created, price: String(created.price) };
+}
+
 export async function updateTicketType(
   eventId: string,
   ticketTypeId: string,

@@ -8,6 +8,7 @@ import {
   Calendar,
   Plus,
   RefreshCw,
+  Percent,
   BookOpen,
   LogOut,
   Menu,
@@ -22,6 +23,7 @@ const NAV_ITEMS = [
   { href: "/organizer/events/create", label: "Create Event", Icon: Plus },
   { href: "/organizer/bookings", label: "Bookings", Icon: BookOpen },
   { href: "/organizer/refunds", label: "Refunds", Icon: RefreshCw },
+  { href: "/organizer/discounts", label: "Discounts", Icon: Percent },
 ];
 
 function matchesHref(pathname: string, href: string) {

@@ -8,6 +8,7 @@ import {
   ACCESS_TOKEN_STORAGE_KEY,
   ApiError,
   createSession,
+  createTicketType,
   deleteTicketType,
   extractImageUrl,
   getEvent,
@@ -700,12 +701,47 @@ export function EventDetailPanel({
     }
   }
 
-  function handleAddType(sessionId: string, v: NewTicketType) {
-    const drafts = sessions.map((s) => {
-      const d = toDraft(s);
-      return s.id === sessionId ? { ...d, ticketTypes: [...d.ticketTypes, v] } : d;
-    });
-    save(drafts, "Ticket type added.", sessionId);
+  async function handleAddType(sessionId: string, v: NewTicketType) {
+    // Events without a persisted session fall back to the full-save path.
+    if (!sessions.find((s) => s.id === sessionId)?.persisted) {
+      const drafts = sessions.map((s) => {
+        const d = toDraft(s);
+        return s.id === sessionId ? { ...d, ticketTypes: [...d.ticketTypes, v] } : d;
+      });
+      save(drafts, "Ticket type added.", sessionId);
+      return;
+    }
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const token = typeof window !== "undefined" ? window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) : null;
+      const created = await createTicketType(
+        event.id,
+        { name: v.name, price: Number(v.price), quantity: v.quantity, session_id: sessionId },
+        token,
+      );
+      // Merge the returned ticket type into the event so the UI updates
+      // without a refetch.
+      onChanged?.({
+        ...event,
+        ticket_types: [...event.ticket_types, created],
+        sessions: event.sessions.map((raw) => {
+          const s = (raw ?? {}) as Record<string, unknown>;
+          return s.id === sessionId && Array.isArray(s.ticket_types)
+            ? { ...s, ticket_types: [...(s.ticket_types as EventTicketType[]), created] }
+            : raw;
+        }),
+        total_tickets: event.total_tickets + created.quantity,
+        available_tickets: event.available_tickets + created.available_quantity,
+      });
+      setExpandedSession(sessionId);
+      setModal(null);
+      setToast({ type: "success", message: "Ticket type added." });
+    } catch (err) {
+      setSaveError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   const dateGroups = useMemo(() => {
