@@ -51,7 +51,7 @@ function toDisplayEvents(dashboard: DashboardResponse): DisplayEvent[] {
     capacity: e.total_tickets,
     sold: e.tickets_sold,
     revenue: e.revenue,
-    status: e.total_tickets > 0 && e.tickets_sold >= e.total_tickets ? "ended" : "on-sale",
+    status: e.status,
   }));
 }
 

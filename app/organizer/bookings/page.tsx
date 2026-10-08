@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BookOpen, RotateCcw, Search } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pagination } from "@/components/ui/pagination";
+import { Select } from "@/components/ui/select";
 import { ACCESS_TOKEN_STORAGE_KEY, formatBookingTicketTypes, formatMoney, getBookings, type BookingsResponse } from "@/lib/api";
 
 function getStoredToken(): string | null {
@@ -104,20 +105,13 @@ export default function BookingsPage() {
             className="flex-1 min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
         </div>
-        <select
+        <Select
           value={eventSel}
-          onChange={(e) => {
-            setEventSel(e.target.value);
-          }}
-          className="bg-card border border-border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary text-foreground"
-        >
-          <option value="all">All Events</option>
-          {eventOptions.map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </select>
+          onChange={setEventSel}
+          ariaLabel="Filter by event"
+          className="w-full sm:w-56"
+          options={[{ value: "all", label: "All Events" }, ...eventOptions.map((name) => ({ value: name, label: name }))]}
+        />
         <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2.5">
           <span className="text-xs text-muted-foreground">From</span>
           <input

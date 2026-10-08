@@ -77,6 +77,9 @@ export function CreateEventForm({
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [published, setPublished] = useState(false);
+  // Editing a draft: offer Publish alongside Save Changes, like the create flow.
+  const isDraftEdit = isEditMode && initialEvent?.status === "draft";
+  const [publishedFromDraft, setPublishedFromDraft] = useState(false);
 
   const [form, setForm] = useState({
     name: initialEvent?.name ?? "",
@@ -285,6 +288,23 @@ export function CreateEventForm({
     }
   }
 
+  async function handleUpdateAndPublish() {
+    if (submitting || !eventId) return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      await updateEvent(eventId, buildPayload(), getAccessToken());
+      const publishedEvent = await publishEvent(eventId, getAccessToken());
+      setCreatedEvent(publishedEvent);
+      setPublishedFromDraft(true);
+      setPublished(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to publish event. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   if (published) {
     return (
       <div className="p-4 sm:p-6 max-w-2xl mx-auto">
@@ -292,9 +312,9 @@ export function CreateEventForm({
           <div className="w-14 h-14 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center mx-auto">
             <Check size={24} className="text-emerald-600" />
           </div>
-          <h2 className="text-xl font-black font-(family-name:--font-display)">{isEditMode ? "Event Updated!" : "Event Published!"}</h2>
+          <h2 className="text-xl font-black font-(family-name:--font-display)">{isEditMode && !publishedFromDraft ? "Event Updated!" : "Event Published!"}</h2>
           <p className="text-sm text-muted-foreground">
-            {isEditMode
+            {isEditMode && !publishedFromDraft
               ? `${createdEvent?.name || form.name || "Your event"} has been updated successfully.`
               : `${createdEvent?.name || form.name || "Your event"} is now live and ready to sell tickets.`}
           </p>
@@ -870,13 +890,22 @@ export function CreateEventForm({
                       {savingDraft ? "Saving…" : "Save as Draft"}
                     </button>
                   )}
+                  {isDraftEdit && (
+                    <button
+                      onClick={handleUpdateEvent}
+                      disabled={submitting}
+                      className="flex items-center gap-2 border border-border text-muted-foreground font-semibold px-5 py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
+                    >
+                      {submitting ? "Saving…" : "Save Changes"}
+                    </button>
+                  )}
                   <button
-                    onClick={isEditMode ? handleUpdateEvent : createdEvent ? handlePublishEvent : handleCreateEvent}
+                    onClick={isDraftEdit ? handleUpdateAndPublish : isEditMode ? handleUpdateEvent : createdEvent ? handlePublishEvent : handleCreateEvent}
                     disabled={submitting}
                     className="flex items-center gap-2 bg-emerald-500 text-white font-bold px-8 py-2.5 rounded-xl hover:bg-emerald-600 transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
                   >
                     <Check size={14} />
-                    {isEditMode ? (submitting ? "Saving…" : "Save Changes") : submitting ? "Publishing…" : "Publish Event"}
+                    {isEditMode && !isDraftEdit ? (submitting ? "Saving…" : "Save Changes") : submitting ? "Publishing…" : "Publish Event"}
                   </button>
                 </div>
               </div>

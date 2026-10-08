@@ -7,6 +7,7 @@ export type DashboardLatestEvent = {
   total_tickets: number;
   tickets_sold: number;
   revenue: string;
+  status: string;
 };
 
 export type DashboardLatestBooking = {
@@ -799,4 +800,90 @@ export function formatBookingTicketTypes(value: unknown): string {
     .map((v) => (typeof v === "string" ? v : typeof (v as { name?: unknown } | null)?.name === "string" ? (v as { name: string }).name : null))
     .filter((n): n is string => Boolean(n));
   return names.length ? names.join(", ") : "—";
+}
+
+export type DiscountType = "percentage" | "fixed";
+
+export type DiscountItem = {
+  id: string;
+  code: string;
+  discount_type: DiscountType;
+  value: string | number;
+  max_uses: number;
+  // Redemptions so far; the field name varies, see getDiscountUses().
+  used_count?: number;
+  uses?: number;
+  event_id?: string;
+  event_name?: string;
+  start_at?: string | null;
+  end_at?: string | null;
+  status?: string;
+  is_active?: boolean;
+};
+
+export type DiscountsResponse = {
+  page: number;
+  page_size: number;
+  total: number;
+  results: DiscountItem[];
+};
+
+export type CreateDiscountPayload = {
+  event_id: string;
+  session_id: string;
+  ticket_type_id: string;
+  code: string;
+  discount_type: DiscountType;
+  value: number;
+  max_uses: number;
+  start_at: string;
+  end_at: string;
+};
+
+export async function getDiscounts(page = 1, eventId?: string | null, token?: string | null): Promise<DiscountsResponse> {
+  const params = new URLSearchParams({ page: String(page) });
+  if (eventId) params.set("event_id", eventId);
+  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/discounts/list/?${params}`, {
+    cache: "no-store",
+    headers: {
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!res.ok) {
+    throw new ApiError(await readErrorDetail(res, "Failed to load discounts."), res.status);
+  }
+
+  return res.json() as Promise<DiscountsResponse>;
+}
+
+export async function createDiscount(payload: CreateDiscountPayload, token?: string | null): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/discounts/create/`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    throw new ApiError(await readErrorDetail(res, "Failed to create discount. Please try again."), res.status);
+  }
+}
+
+export async function deleteDiscount(discountId: string, token?: string | null): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/discounts/${discountId}/delete/`, {
+    method: "DELETE",
+    headers: {
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!res.ok) {
+    throw new ApiError(await readErrorDetail(res, "Failed to delete discount. Please try again."), res.status);
+  }
 }

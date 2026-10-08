@@ -59,14 +59,14 @@ export function RefundsTable({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="w-full min-w-[960px] lg:min-w-0 text-sm">
         <thead className="border-b border-border bg-secondary/30">
           <tr>
             {["Customer", "Event", "Reason", "Qty", "Amount", "Requested", "Status", "Actions"].map((h) => (
               <th
                 key={h}
                 className={`text-left text-xs text-muted-foreground font-semibold px-5 py-3 whitespace-nowrap ${
-                  h === "Actions" ? "sticky right-0 bg-secondary/40 shadow-[-4px_0_6px_rgba(0,0,0,0.04)]" : ""
+                  h === "Actions" ? "lg:sticky lg:right-0 bg-secondary/40 lg:shadow-[-4px_0_6px_rgba(0,0,0,0.04)]" : ""
                 }`}
               >
                 {h}
@@ -95,11 +95,11 @@ export function RefundsTable({
                 <td className="px-5 py-4 text-xs font-semibold text-center">{request.quantity}</td>
                 <td className="px-5 py-4 text-xs font-bold">{formatMoney(request.amount)}</td>
                 <td className="px-5 py-4 text-xs text-muted-foreground whitespace-nowrap">{formatDate(request.created_at)}</td>
-                <td className="px-5 py-4">
+                <td className="px-5 py-4 whitespace-nowrap">
                   <StatusBadge status={status} />
                 </td>
                 <td
-                  className={`px-5 py-4 sticky right-0 shadow-[-4px_0_6px_rgba(0,0,0,0.04)] ${confirming ? "bg-amber-50" : "bg-card"}`}
+                  className={`px-5 py-4 lg:sticky lg:right-0 lg:shadow-[-4px_0_6px_rgba(0,0,0,0.04)] ${confirming ? "bg-amber-50" : "bg-card"}`}
                 >
                   {isPending && !confirming && (
                     <div className="flex items-center gap-2">
