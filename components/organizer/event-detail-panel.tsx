@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle, ChevronDown, ChevronRight, Edit2, MapPin, Plus, Trash2, X, XCircle } from "lucide-react";
+import { ArrowLeft, BookOpen, CheckCircle, ChevronDown, ChevronRight, Edit2, MapPin, Plus, Trash2, X, XCircle } from "lucide-react";
 import { StatusBadge } from "@/components/ui/badge";
 import {
   ACCESS_TOKEN_STORAGE_KEY,
@@ -39,7 +39,7 @@ type PanelSession = {
 type Modal = { kind: "slot"; date: string } | { kind: "type"; sessionId: string } | { kind: "delete"; ticket: EventTicketType } | { kind: "edit"; ticket: EventTicketType } | { kind: "editSession"; session: PanelSession };
 
 const inp =
-  "w-full bg-background border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground";
+  "w-full min-w-0 max-w-full appearance-none bg-background border border-border rounded-xl px-3 py-2 text-base sm:text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground";
 const lbl = "text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block";
 
 function toDraft(s: PanelSession): SessionDraft {
@@ -141,7 +141,7 @@ function TicketTypesTable({
 }) {
   if (ticketTypes.length === 0) {
     return (
-      <div className="px-5 py-4 text-xs text-muted-foreground italic flex items-center justify-between">
+      <div className="px-4 sm:px-5 py-4 text-xs text-muted-foreground italic flex flex-wrap items-center justify-between gap-2">
         <span>No ticket types configured for this session.</span>
         {editable && (
           <button
@@ -157,7 +157,7 @@ function TicketTypesTable({
   }
   return (
     <div className="border-t border-border">
-      <div className="flex items-center justify-between px-5 pt-3 pb-2">
+      <div className="flex items-center justify-between px-4 sm:px-5 pt-3 pb-2">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ticket Types</span>
         {editable && (
           <button type="button" onClick={onAddType} className="flex items-center gap-1 text-xs text-primary font-semibold hover:underline">
@@ -165,8 +165,46 @@ function TicketTypesTable({
           </button>
         )}
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs">
+      {/* Mobile: stacked cards so the edit/delete actions stay on screen */}
+      <ul className="sm:hidden divide-y divide-border/50">
+        {ticketTypes.map((tt) => {
+          const sold = tt.quantity - tt.available_quantity;
+          const pct = tt.quantity > 0 ? Math.round((sold / tt.quantity) * 100) : 0;
+          return (
+            <li key={tt.id} className="px-4 py-3 space-y-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold break-words">{tt.name}</div>
+                  <div className="font-mono text-[10px] text-muted-foreground">{tt.ticket_type_code ?? ticketNos.get(tt.id)}</div>
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <span className="text-xs font-semibold">${tt.price}</span>
+                  {editable && (
+                    <>
+                      <button type="button" aria-label={`Edit ${tt.name}`} onClick={() => onEditType(tt)} className="p-1.5 -m-1 text-muted-foreground hover:text-foreground">
+                        <Edit2 size={13} />
+                      </button>
+                      <button type="button" aria-label={`Delete ${tt.name}`} onClick={() => onDeleteType(tt)} className="p-1.5 -m-1 text-muted-foreground hover:text-red-500">
+                        <Trash2 size={13} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-1 rounded-full bg-secondary overflow-hidden">
+                  <div className={`h-full rounded-full ${pct >= 90 ? "bg-orange-500" : "bg-primary"}`} style={{ width: `${pct}%` }} />
+                </div>
+                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                  {sold.toLocaleString()} sold / {tt.quantity.toLocaleString()} · {tt.available_quantity.toLocaleString()} left
+                </span>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="hidden sm:block overflow-x-auto">
+        <table className="w-full text-xs whitespace-nowrap">
           <thead>
             <tr className="border-b border-border">
               {["ID", "Name", "Price", "Total", "Available", "Sold"].map((h) => (
@@ -275,12 +313,12 @@ function SessionRow({
             onToggle();
           }
         }}
-        className="w-full flex items-center gap-4 px-5 py-3.5 hover:bg-secondary/30 transition-colors text-left cursor-pointer"
+        className="w-full flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2 sm:gap-4 px-4 sm:px-5 py-3.5 hover:bg-secondary/30 transition-colors text-left cursor-pointer"
       >
-        <div className="flex-shrink-0 w-24 text-sm font-bold font-(family-name:--font-display)">{fmtTime(session.startTime)}</div>
+        <div className="flex-shrink-0 sm:w-24 text-sm font-bold font-(family-name:--font-display)">{fmtTime(session.startTime)}</div>
         <div className="flex-shrink-0 text-xs text-muted-foreground">→</div>
-        <div className="flex-shrink-0 w-24 text-sm font-bold font-(family-name:--font-display)">{fmtTime(session.endTime)}</div>
-        <div className="flex-1 flex items-center gap-4 min-w-0">
+        <div className="flex-shrink-0 sm:w-24 text-sm font-bold font-(family-name:--font-display)">{fmtTime(session.endTime)}</div>
+        <div className="order-last sm:order-none w-full sm:w-auto sm:flex-1 flex flex-wrap items-center gap-x-4 gap-y-1 min-w-0">
           {totalQty > 0 ? (
             <>
               <div className="flex items-center gap-2 min-w-0">
@@ -299,7 +337,7 @@ function SessionRow({
             <span className="text-xs text-muted-foreground italic">No ticket types yet</span>
           )}
         </div>
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-3 flex-shrink-0 ml-auto">
           <span className="font-mono text-[10px] text-muted-foreground hidden md:block">{session.code ?? session.displayNo}</span>
           {editable && session.persisted && (
             <button
@@ -344,11 +382,18 @@ function ModalShell({
       if (e.key === "Escape" && !saving) onClose();
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    // Keep the page behind the sheet from scrolling (and shifting the
+    // fixed sheet) while it's open.
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
   }, [saving, onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => !saving && onClose()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 overscroll-contain" onClick={() => !saving && onClose()}>
       <form
         role="dialog"
         aria-modal="true"
@@ -358,9 +403,9 @@ function ModalShell({
           e.preventDefault();
           onSubmit();
         }}
-        className="w-full max-w-md bg-card border border-border rounded-2xl shadow-xl"
+        className="w-full max-w-md max-h-[90dvh] flex flex-col bg-card border border-border rounded-2xl shadow-xl"
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-border flex-shrink-0">
           <h3 className="text-sm font-bold font-(family-name:--font-display)">{title}</h3>
           <button
             type="button"
@@ -372,23 +417,23 @@ function ModalShell({
             <X size={16} />
           </button>
         </div>
-        <div className="px-5 py-4 space-y-4">
+        <div className="px-4 sm:px-5 py-4 space-y-4 overflow-y-auto overscroll-contain min-h-0 flex-1">
           {children}
           {error && <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-3 py-2.5">{error}</div>}
         </div>
-        <div className="flex justify-end gap-2 px-5 py-4 border-t border-border">
+        <div className="flex gap-2 sm:justify-end px-4 sm:px-5 py-4 border-t border-border flex-shrink-0">
           <button
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="text-xs font-semibold px-4 py-2 rounded-lg border border-border hover:bg-secondary transition-colors disabled:opacity-50"
+            className="flex-1 sm:flex-none text-xs font-semibold px-4 py-2.5 sm:py-2 rounded-lg border border-border hover:bg-secondary transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={saving}
-            className="text-xs font-semibold px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-60"
+            className="flex-1 sm:flex-none text-xs font-semibold px-4 py-2.5 sm:py-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-60"
           >
             {saving ? "Saving…" : submitLabel}
           </button>
@@ -409,7 +454,17 @@ function parseTicketFields(v: TicketFieldsValue): NewTicketType | string {
   return { name: v.name.trim(), price: v.price.trim(), quantity };
 }
 
+function useIsDesktop() {
+  const [desktop, setDesktop] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDesktop(window.matchMedia("(min-width: 640px)").matches);
+  }, []);
+  return desktop;
+}
+
 function TicketFields({ value, onChange, autoFocus }: { value: TicketFieldsValue; onChange: (v: TicketFieldsValue) => void; autoFocus?: boolean }) {
+  const desktop = useIsDesktop();
   return (
     <>
       <div>
@@ -419,10 +474,10 @@ function TicketFields({ value, onChange, autoFocus }: { value: TicketFieldsValue
           onChange={(e) => onChange({ ...value, name: e.target.value })}
           placeholder="e.g. General Admission"
           className={inp}
-          autoFocus={autoFocus}
+          autoFocus={autoFocus && desktop}
         />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3">
         <div>
           <label className={lbl}>Price ($)</label>
           <input
@@ -490,7 +545,7 @@ function AddSlotModal({
         <label className={lbl}>Date</label>
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inp} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 min-[360px]:grid-cols-2 gap-3">
         <div>
           <label className={lbl}>Start Time</label>
           <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inp} />
@@ -543,7 +598,7 @@ function EditSessionModal({
         <label className={lbl}>Date</label>
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inp} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 min-[360px]:grid-cols-2 gap-3">
         <div>
           <label className={lbl}>Start Time</label>
           <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inp} />
@@ -843,21 +898,21 @@ export function EventDetailPanel({
   const status = event.status === "completed" ? "ended" : event.status.replace(/_/g, "-");
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       {/* Header */}
-      <div className="relative h-44 flex-shrink-0 bg-secondary overflow-hidden">
+      <div className="relative h-44 min-h-44 flex-shrink-0 bg-secondary overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={image} alt={event.name} className="w-full h-full object-cover opacity-60" />
         <div className="absolute inset-0 bg-gradient-to-t from-background/90 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 p-6 flex items-end justify-between gap-4">
-          <div>
+        <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 flex flex-col items-start sm:flex-row sm:items-end justify-between gap-2 sm:gap-4">
+          <div className="min-w-0 max-w-full">
             <button onClick={onBack} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-2 transition-colors">
               <ArrowLeft size={12} /> All Events
             </button>
-            <h2 className="text-xl font-bold leading-tight font-(family-name:--font-display)">{event.name}</h2>
+            <h2 className="text-lg sm:text-xl font-bold leading-tight break-words line-clamp-2 font-(family-name:--font-display)">{event.name}</h2>
             <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <MapPin size={11} />
+              <span className="flex items-start gap-1 min-w-0">
+                <MapPin size={11} className="mt-0.5 flex-shrink-0" />
                 {event.venue}
                 {event.city ? `, ${event.city}` : ""}
               </span>
@@ -876,8 +931,8 @@ export function EventDetailPanel({
       </div>
 
       {/* Summary strip */}
-      <div className="flex items-stretch border-b border-border flex-shrink-0">
-        <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-border flex-1">
+      <div className="flex flex-col sm:flex-row sm:items-stretch border-b border-border flex-shrink-0">
+        <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-border flex-1 [&>*:nth-child(n+3)]:border-t [&>*:nth-child(n+3)]:border-border sm:[&>*:nth-child(n+3)]:border-t-0">
           {[
             { label: "Sessions", value: sessions.length },
             { label: "Total Capacity", value: totalCap.toLocaleString() },
@@ -887,16 +942,24 @@ export function EventDetailPanel({
               value: revenue > 0 ? `$${revenue.toLocaleString()}` : "—",
             },
           ].map(({ label, value }) => (
-            <div key={label} className="px-5 py-3.5">
+            <div key={label} className="px-4 sm:px-5 py-3 sm:py-3.5 min-w-0">
               <div className="text-xs text-muted-foreground">{label}</div>
               <div className="text-sm font-bold mt-0.5 font-(family-name:--font-display)">{value}</div>
             </div>
           ))}
         </div>
+        <div className="flex-shrink-0 px-4 py-3 sm:py-0 flex items-center border-t sm:border-t-0 sm:border-l border-border">
+          <Link
+            href={`/organizer/bookings?event=${encodeURIComponent(event.name)}`}
+            className="flex w-full sm:w-auto items-center justify-center gap-2 text-xs font-semibold text-primary bg-primary/8 border border-primary/20 px-3 py-2 rounded-lg hover:bg-primary/15 transition-colors whitespace-nowrap"
+          >
+            <BookOpen size={12} /> See All Bookings
+          </Link>
+        </div>
       </div>
 
       {/* Sessions */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="relative flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-5 sm:space-y-6">
         {/* Location */}
         {(event.address || event.map_url) && (
           <div className="bg-card border border-border rounded-2xl overflow-hidden">
@@ -1021,15 +1084,15 @@ export function EventDetailPanel({
           onSubmit={() => handleDeleteType(modal.ticket)}
           submitLabel="Delete"
         >
-          <p className="text-sm text-muted-foreground">
-            Are you sure you want to delete <span className="font-semibold text-foreground">{modal.ticket.name}</span>? This can&apos;t be undone.
+          <p className="text-sm text-muted-foreground break-words">
+            Are you sure you want to delete <span className="font-semibold text-foreground break-all">{modal.ticket.name}</span>? This can&apos;t be undone.
           </p>
         </ModalShell>
       )}
       {toast && (
         <div
           role="status"
-          className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 max-w-sm rounded-xl border px-4 py-3 shadow-lg text-sm font-medium ${
+          className={`fixed bottom-4 left-4 right-4 sm:left-auto sm:bottom-6 sm:right-6 z-50 flex items-center gap-3 max-w-sm rounded-xl border px-4 py-3 shadow-lg text-sm font-medium ${
             toast.type === "success" ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-red-50 border-red-200 text-red-700"
           }`}
         >

@@ -197,7 +197,7 @@ export default function MyEventsPage() {
 
   if (selectedId) {
     return (
-      <div className="h-full flex flex-col overflow-hidden">
+      <div className="h-full min-h-0 flex flex-col overflow-hidden">
         {detailStatus === "loading" && <p className="text-sm text-muted-foreground py-12 text-center">Loading event…</p>}
         {detailStatus === "error" && (
           <div className="p-6 space-y-4">
@@ -279,6 +279,7 @@ export default function MyEventsPage() {
                     }}
                   />
                 </div>
+                <div className="flex flex-1 items-center min-w-0">
                 <div className="flex-1 p-4 min-w-0">
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="min-w-0">
@@ -317,15 +318,16 @@ export default function MyEventsPage() {
                     {e.revenue > 0 && <span className="text-xs font-bold flex-shrink-0">${e.revenue.toLocaleString()}</span>}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 pr-4 flex-shrink-0">
+                <div className="flex items-center gap-2 pr-3 sm:pr-4 flex-shrink-0">
                   <Link
-                    href={`/organizer/bookings?event=${e.id}`}
+                    href={`/organizer/bookings?event=${encodeURIComponent(e.name)}`}
                     onClick={(ev) => ev.stopPropagation()}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-primary border border-primary/20 bg-primary/5 px-3 py-1.5 rounded-lg hover:bg-primary/15 transition-colors opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                    className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-primary border border-primary/20 bg-primary/5 px-3 py-1.5 rounded-lg hover:bg-primary/15 transition-colors opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                   >
                     <BookOpen size={11} /> Bookings
                   </Link>
                   <ChevronRight size={16} className="text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
                 </div>
               </div>
             </div>

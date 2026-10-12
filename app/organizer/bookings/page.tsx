@@ -41,6 +41,13 @@ export default function BookingsPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
+  // Deep link from an event's "See All Bookings": /organizer/bookings?event=<name>
+  useEffect(() => {
+    const name = new URLSearchParams(window.location.search).get("event");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (name) setEventSel(name);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -67,7 +74,10 @@ export default function BookingsPage() {
   const hasFilters = Boolean(search || eventSel !== "all" || dateFrom || dateTo);
 
   // The API only paginates; search / event / date narrow the loaded page.
-  const eventOptions = useMemo(() => Array.from(new Set((data?.results ?? []).map((b) => b.event_name))).sort(), [data]);
+  const eventOptions = useMemo(
+    () => Array.from(new Set([...(data?.results ?? []).map((b) => b.event_name), ...(eventSel !== "all" ? [eventSel] : [])])).sort(),
+    [data, eventSel],
+  );
 
   const paged = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -94,7 +104,7 @@ export default function BookingsPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
-        <div className="flex items-center gap-2.5 flex-1 min-w-48 bg-card border border-border rounded-xl px-4 py-2.5">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto flex-1 sm:min-w-48 bg-card border border-border rounded-xl px-4 py-2.5">
           <Search size={13} className="text-muted-foreground flex-shrink-0" />
           <input
             value={search}
@@ -112,7 +122,7 @@ export default function BookingsPage() {
           className="w-full sm:w-56"
           options={[{ value: "all", label: "All Events" }, ...eventOptions.map((name) => ({ value: name, label: name }))]}
         />
-        <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2.5">
+        <div className="flex items-center justify-between gap-2 flex-1 sm:flex-none min-w-0 bg-card border border-border rounded-xl px-4 py-2.5">
           <span className="text-xs text-muted-foreground">From</span>
           <input
             type="date"
@@ -120,10 +130,10 @@ export default function BookingsPage() {
             onChange={(e) => {
               setDateFrom(e.target.value);
             }}
-            className="bg-transparent text-sm outline-none text-foreground"
+            className="min-w-0 bg-transparent text-sm outline-none text-foreground"
           />
         </div>
-        <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2.5">
+        <div className="flex items-center justify-between gap-2 flex-1 sm:flex-none min-w-0 bg-card border border-border rounded-xl px-4 py-2.5">
           <span className="text-xs text-muted-foreground">To</span>
           <input
             type="date"
@@ -131,7 +141,7 @@ export default function BookingsPage() {
             onChange={(e) => {
               setDateTo(e.target.value);
             }}
-            className="bg-transparent text-sm outline-none text-foreground"
+            className="min-w-0 bg-transparent text-sm outline-none text-foreground"
           />
         </div>
         {hasFilters && (
@@ -178,7 +188,7 @@ export default function BookingsPage() {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[960px] lg:min-w-0 text-sm">
                 <thead className="border-b border-border bg-secondary/30">
                   <tr>
                     {["Booking ID", "Customer", "Event", "Ticket Type", "Tickets", "Amount", "Booking Date", "Status"].map((h) => (

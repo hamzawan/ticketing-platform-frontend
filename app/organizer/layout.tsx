@@ -23,9 +23,9 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
   if (!authorized) return null;
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen lg:h-screen bg-background lg:overflow-hidden">
+    <div className="flex flex-col lg:flex-row relative h-dvh bg-background overflow-hidden">
       <OrganizerSidebar />
-      <main className="flex-1 lg:overflow-y-auto">{children}</main>
+      <main className="relative flex-1 min-h-0 min-w-0 overflow-y-auto">{children}</main>
     </div>
   );
 }

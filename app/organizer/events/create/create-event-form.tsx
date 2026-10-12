@@ -482,11 +482,11 @@ export function CreateEventForm({
                     />
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-dashed border-border bg-secondary/40 flex flex-col items-center justify-center gap-2 py-8">
+                  <div className="rounded-xl border border-dashed border-border bg-secondary/40 flex flex-col items-center justify-center gap-2 py-8 px-4">
                     <div className="w-9 h-9 rounded-xl bg-secondary flex items-center justify-center">
                       <MapPin size={16} className="text-muted-foreground" />
                     </div>
-                    <p className="text-xs text-muted-foreground">Map preview will appear here once you add an embed URL.</p>
+                    <p className="text-xs text-muted-foreground text-center max-w-xs text-balance">Map preview will appear here once you add an embed URL.</p>
                   </div>
                 )}
               </div>
