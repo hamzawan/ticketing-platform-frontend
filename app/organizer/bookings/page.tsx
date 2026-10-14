@@ -86,7 +86,8 @@ export default function BookingsPage() {
       const day = localDay(b.created_at);
       if (dateFrom && day < dateFrom) return false;
       if (dateTo && day > dateTo) return false;
-      if (q && !b.customer_email.toLowerCase().includes(q) && !b.customer_name.toLowerCase().includes(q) && !b.booking_number.toLowerCase().includes(q)) return false;
+      // Any of these can come back null from the API (e.g. guest bookings).
+      if (q && ![b.customer_email, b.customer_name, b.booking_number].some((v) => (v ?? "").toLowerCase().includes(q))) return false;
       return true;
     });
   }, [data, search, eventSel, dateFrom, dateTo]);
