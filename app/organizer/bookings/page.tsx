@@ -129,7 +129,10 @@ export default function BookingsPage() {
             type="date"
             value={dateFrom}
             onChange={(e) => {
-              setDateFrom(e.target.value);
+              const next = e.target.value;
+              setDateFrom(next);
+              // Keep the range valid: drop a To date that now falls before From.
+              if (next && dateTo && dateTo < next) setDateTo("");
             }}
             className="min-w-0 bg-transparent text-sm outline-none text-foreground"
           />
@@ -139,8 +142,12 @@ export default function BookingsPage() {
           <input
             type="date"
             value={dateTo}
+            min={dateFrom || undefined}
             onChange={(e) => {
-              setDateTo(e.target.value);
+              const next = e.target.value;
+              // min only blocks the picker UI; typed values can still be earlier.
+              if (next && dateFrom && next < dateFrom) return;
+              setDateTo(next);
             }}
             className="min-w-0 bg-transparent text-sm outline-none text-foreground"
           />
