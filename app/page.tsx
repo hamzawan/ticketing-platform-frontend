@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, CheckCircle, Eye, EyeOff, Lock, Mail, RefreshCw } from "lucide-react";
+import { AlertCircle, CheckCircle, Circle, Eye, EyeOff, Info, Lock, Mail, RefreshCw } from "lucide-react";
 import {
   ACCESS_TOKEN_STORAGE_KEY,
   ApiError,
@@ -148,6 +148,60 @@ export default function RoleSelectorPage() {
 
  * ───────────────────────────────────────────────────────────────────────── */
 
+const PASSWORD_RULES = [
+  { id: "special", label: "At least 1 special character", test: (pw: string) => /[^A-Za-z0-9\s]/.test(pw) },
+  { id: "number", label: "At least 1 number", test: (pw: string) => /\d/.test(pw) },
+  { id: "upper", label: "At least 1 uppercase letter", test: (pw: string) => /[A-Z]/.test(pw) },
+  { id: "lower", label: "At least 1 lowercase letter", test: (pw: string) => /[a-z]/.test(pw) },
+  { id: "length", label: "Minimum length of 9 characters", test: (pw: string) => pw.length >= 9 },
+];
+
+// Focusable (i) button: the tooltip opens on hover, keyboard focus, and tap
+// (tapping focuses the button on mobile), and closes on blur.
+function PasswordRequirementsTooltip({ id }: { id: string }) {
+  return (
+    <span className="relative group inline-flex normal-case tracking-normal">
+      <button
+        type="button"
+        aria-label="Password requirements"
+        aria-describedby={id}
+        className="text-muted-foreground hover:text-foreground focus:text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-full"
+      >
+        <Info size={14} />
+      </button>
+      <span
+        role="tooltip"
+        id={id}
+        className="invisible opacity-0 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 transition-opacity absolute left-0 top-full mt-2 z-20 w-64 max-w-[calc(100vw-4rem)] rounded-xl bg-foreground text-white text-xs font-normal px-3 py-2.5 shadow-lg"
+      >
+        <span className="block font-semibold mb-1">Password must have:</span>
+        <ul className="list-disc pl-4 space-y-0.5">
+          {PASSWORD_RULES.map((r) => (
+            <li key={r.id}>{r.label}</li>
+          ))}
+        </ul>
+      </span>
+    </span>
+  );
+}
+
+function PasswordChecklist({ password }: { password: string }) {
+  return (
+    <ul aria-label="Password requirements status" className="space-y-1">
+      {PASSWORD_RULES.map((r) => {
+        const met = r.test(password);
+        return (
+          <li key={r.id} className={`flex items-center gap-1.5 text-xs ${met ? "text-emerald-600" : "text-muted-foreground"}`}>
+            {met ? <CheckCircle size={12} /> : <Circle size={12} />}
+            <span>{r.label}</span>
+            <span className="sr-only">{met ? "(met)" : "(not met)"}</span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function InputField({
   label,
   id,
@@ -157,6 +211,7 @@ function InputField({
   onChange,
   icon: Icon,
   rightSlot,
+  labelAdornment,
   error,
 }: {
   label: string;
@@ -167,13 +222,17 @@ function InputField({
   onChange: (v: string) => void;
   icon?: React.ElementType;
   rightSlot?: React.ReactNode;
+  labelAdornment?: React.ReactNode;
   error?: string;
 }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={id} className="block text-xs font-semibold uppercase tracking-wide text-foreground">
-        {label}
-      </label>
+      <div className="flex items-center gap-1.5">
+        <label htmlFor={id} className="block text-xs font-semibold uppercase tracking-wide text-foreground">
+          {label}
+        </label>
+        {labelAdornment}
+      </div>
       <div className="relative">
         {Icon && (
           <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
@@ -392,6 +451,12 @@ export default function OrganizerAuthPage() {
       return;
     }
 
+    const unmetRules = PASSWORD_RULES.filter((r) => !r.test(suPw1));
+    if (unmetRules.length > 0) {
+      setFieldErrors({ suPw1: `Password must have: ${unmetRules.map((r) => r.label.toLowerCase()).join("; ")}.` });
+      return;
+    }
+
     if (suPw1 !== suPw2) {
       setError("Passwords does not match");
       return;
@@ -536,8 +601,10 @@ export default function OrganizerAuthPage() {
                   onChange={setSuPw1}
                   icon={Lock}
                   rightSlot={eyeBtn(showSuPw1, () => setShowSuPw1((p) => !p))}
+                  labelAdornment={<PasswordRequirementsTooltip id="su-pw1-requirements" />}
                   error={fieldErrors.suPw1}
                 />
+                {suPw1 && <PasswordChecklist password={suPw1} />}
                 <InputField
                   label="Confirm Password"
                   id="su-pw2"
