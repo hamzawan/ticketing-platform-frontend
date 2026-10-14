@@ -919,12 +919,14 @@ export function EventDetailPanel({
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <Link
-              href={`/organizer/events/${event.id}/edit`}
-              className="flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/8 border border-primary/20 px-3 py-2 rounded-lg hover:bg-primary/15 transition-colors"
-            >
-              <Edit2 size={12} /> Edit
-            </Link>
+            {editable && (
+              <Link
+                href={`/organizer/events/${event.id}/edit`}
+                className="flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/8 border border-primary/20 px-3 py-2 rounded-lg hover:bg-primary/15 transition-colors"
+              >
+                <Edit2 size={12} /> Edit
+              </Link>
+            )}
             <StatusBadge status={status} />
           </div>
         </div>
