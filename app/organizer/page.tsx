@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Calendar, DollarSign, Ticket, Users } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
@@ -161,7 +162,12 @@ export default function OrganizerDashboardPage() {
       </div>
 
       <div className="bg-card border border-border rounded-2xl p-5">
-        <h3 className="text-sm font-bold mb-4 font-(family-name:--font-display)">My Events</h3>
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h3 className="text-sm font-bold font-(family-name:--font-display)">My Events</h3>
+          <Link href="/organizer/events" className="text-xs font-semibold text-primary hover:underline whitespace-nowrap">
+            See My All Events →
+          </Link>
+        </div>
         {events.length === 0 ? (
           <p className="text-sm text-muted-foreground py-6 text-center">No events yet.</p>
         ) : (
