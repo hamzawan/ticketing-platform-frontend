@@ -35,6 +35,12 @@ function parseAgeInput(value: string): number | null {
 
 // The API returns times like "14:47:55.432000"; <input type="time"> only
 // accepts "HH:MM" (or "HH:MM:SS"), so trim it down for the form field.
+// Today in the user's local timezone as YYYY-MM-DD (matches <input type="date"> values).
+function todayInputValue(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function toTimeInputValue(time: string | null | undefined): string {
   return time ? time.slice(0, 5) : "";
 }
@@ -176,8 +182,17 @@ export function CreateEventForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // A date left untouched on an event being edited is allowed even if it has passed.
+  function getPastDateError(): string | null {
+    const today = todayInputValue();
+    const hasPast = sessions.some((s, i) => s.date && s.date < today && !(i === 0 && s.date === initialEvent?.event_date));
+    return hasPast ? "Event dates can't be in the past. Choose today or a future date." : null;
+  }
+
   function validateForm(): string | null {
     if (!form.name.trim() || !form.venue.trim()) return "Event name and venue are required.";
+    const pastDateError = getPastDateError();
+    if (pastDateError) return pastDateError;
     if (mapStatus.resolving) return "Still resolving the Google Maps link — please wait a moment.";
     if (mapStatus.error) return mapStatus.error;
     const first = sessions[0];
@@ -237,6 +252,11 @@ export function CreateEventForm({
     setError(null);
     if (!form.name.trim() || !form.venue.trim()) {
       setError("Event name and venue are required to save a draft.");
+      return;
+    }
+    const pastDateError = getPastDateError();
+    if (pastDateError) {
+      setError(pastDateError);
       return;
     }
     setSavingDraft(true);
@@ -587,7 +607,7 @@ export function CreateEventForm({
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
                         <label className={lbl}>Date</label>
-                        <input type="date" value={s.date} onChange={(e) => updateSession(s.id, "date", e.target.value)} className={inp} />
+                        <input type="date" min={todayInputValue()} value={s.date} onChange={(e) => updateSession(s.id, "date", e.target.value)} className={inp} />
                       </div>
                       <div>
                         <label className={lbl}>Start Time</label>
