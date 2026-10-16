@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Check, ChevronDown, ChevronRight, MapPin, Plus, Trash2, X } from "lucide-react";
 import {
   ACCESS_TOKEN_STORAGE_KEY,
@@ -14,6 +14,7 @@ import {
   type OrganizerEvent,
 } from "@/lib/api";
 import { RichTextEditor } from "@/components/organizer/rich-text-editor";
+import { isEmbedUrl, isShortUrl, MAP_URL_ERROR } from "@/lib/google-maps";
 import { ImageUploader, type UploadedImage } from "@/components/organizer/image-uploader";
 
 type DraftSession = { id: string; date: string; startTime: string; endTime: string };
@@ -122,6 +123,30 @@ export function CreateEventForm({
   const [error, setError] = useState<string | null>(null);
   const [createdEvent, setCreatedEvent] = useState<OrganizerEvent | null>(initialEvent ?? null);
 
+  // Share links are swapped for their embed URL once resolved, so `form.mapUrl`
+  // only ever holds something the preview iframe and the API can use.
+  const [mapStatus, setMapStatus] = useState<{ resolving: boolean; error: string | null }>({ resolving: false, error: null });
+
+  const latestMapInput = useRef(form.mapUrl);
+
+  function handleMapUrlChange(value: string) {
+    const v = value.trim();
+    latestMapInput.current = value;
+    setForm((f) => ({ ...f, mapUrl: value }));
+    if (!v || isEmbedUrl(v)) return setMapStatus({ resolving: false, error: null });
+    if (!isShortUrl(v)) return setMapStatus({ resolving: false, error: MAP_URL_ERROR });
+    setMapStatus({ resolving: true, error: null });
+    fetch(`/api/maps/resolve?url=${encodeURIComponent(v)}`)
+      .then(async (res) => ({ ok: res.ok, data: (await res.json()) as { url?: string; error?: string } }))
+      .catch(() => ({ ok: false, data: { error: "Couldn't resolve this link. Please try again." } as { url?: string; error?: string } }))
+      .then(({ ok, data }) => {
+        // Ignore the result if the user has edited the field since.
+        if (latestMapInput.current !== value) return;
+        setMapStatus({ resolving: false, error: ok && data.url ? null : (data.error ?? MAP_URL_ERROR) });
+        if (ok && data.url) setForm((f) => ({ ...f, mapUrl: data.url! }));
+      });
+  }
+
   const addSession = () => {
     const id = newId("s");
     setSessions((s) => [...s, { id, date: "", startTime: "", endTime: "" }]);
@@ -153,6 +178,8 @@ export function CreateEventForm({
 
   function validateForm(): string | null {
     if (!form.name.trim() || !form.venue.trim()) return "Event name and venue are required.";
+    if (mapStatus.resolving) return "Still resolving the Google Maps link — please wait a moment.";
+    if (mapStatus.error) return mapStatus.error;
     const first = sessions[0];
     const hasTickets = ticketTypes.some((t) => t.name.trim());
     if (hasTickets && (!first?.date || !first?.startTime || !first?.endTime)) {
@@ -194,7 +221,7 @@ export function CreateEventForm({
       description: form.description.trim() || null,
       city: form.city.trim() || null,
       address: form.address.trim() || null,
-      map_url: form.mapUrl.trim() || null,
+      map_url: isEmbedUrl(form.mapUrl.trim()) ? form.mapUrl.trim() : null,
       min_age: parseAgeInput(form.minAge),
       max_age: parseAgeInput(form.maxAge),
       images: images.map((img) => img.file),
@@ -456,19 +483,22 @@ export function CreateEventForm({
                   />
                 </div>
                 <div>
-                  <label className={lbl}>Google Maps Embed URL</label>
+                  <label className={lbl}>Google Maps Link</label>
                   <input
                     value={form.mapUrl}
-                    onChange={(e) => setForm((f) => ({ ...f, mapUrl: e.target.value }))}
-                    placeholder="https://maps.google.com/maps?q=...&output=embed"
+                    onChange={(e) => handleMapUrlChange(e.target.value)}
+                    placeholder="https://maps.app.goo.gl/..."
                     className={inp}
                   />
-                  <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
-                    In Google Maps, click <span className="font-semibold">Share → Embed a map</span>, copy the{" "}
-                    <code className="bg-secondary px-1 py-0.5 rounded text-[10px]">src</code> value from the HTML snippet, and paste it here.
-                  </p>
+                  {mapStatus.error ? (
+                    <p className="text-[11px] text-red-600 mt-1.5 leading-relaxed">{mapStatus.error}</p>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
+                      {mapStatus.resolving ? "Resolving link…" : <>In Google Maps, click <span className="font-semibold">Share → Copy link</span> and paste it here. The <code className="bg-secondary px-1 py-0.5 rounded text-[10px]">src</code> of <span className="font-semibold">Embed a map</span> also works.</>}
+                    </p>
+                  )}
                 </div>
-                {form.mapUrl ? (
+                {isEmbedUrl(form.mapUrl.trim()) ? (
                   <div className="rounded-xl overflow-hidden border border-border" style={{ height: 220 }}>
                     <iframe
                       src={form.mapUrl}
@@ -486,7 +516,7 @@ export function CreateEventForm({
                     <div className="w-9 h-9 rounded-xl bg-secondary flex items-center justify-center">
                       <MapPin size={16} className="text-muted-foreground" />
                     </div>
-                    <p className="text-xs text-muted-foreground text-center max-w-xs text-balance">Map preview will appear here once you add an embed URL.</p>
+                    <p className="text-xs text-muted-foreground text-center max-w-xs text-balance">Map preview will appear here once you add a valid Google Maps link.</p>
                   </div>
                 )}
               </div>
@@ -785,7 +815,7 @@ export function CreateEventForm({
                 </div>
               </div>
 
-              {form.mapUrl && (
+              {isEmbedUrl(form.mapUrl.trim()) && (
                 <div className="bg-card border border-border rounded-2xl overflow-hidden">
                   <div className="px-5 py-3 border-b border-border flex items-center justify-between">
                     <div className="flex items-center gap-2">
