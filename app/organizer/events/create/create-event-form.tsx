@@ -153,18 +153,38 @@ export function CreateEventForm({
       });
   }
 
+  const [sessionError, setSessionError] = useState<string | null>(null);
+
+  // The newest session must be complete and valid before another can be added.
+  function getSessionError(s: DraftSession, idx: number): string | null {
+    const missing = [!s.date && "date", !s.startTime && "start time", !s.endTime && "end time"].filter(Boolean);
+    if (missing.length) return `Session ${idx + 1}: please enter the ${missing.join(", ")} before adding another session.`;
+    if (s.date < todayInputValue() && !(idx === 0 && s.date === initialEvent?.event_date)) {
+      return `Session ${idx + 1}: the date can't be in the past.`;
+    }
+    if (s.endTime <= s.startTime) return `Session ${idx + 1}: the end time must be after the start time.`;
+    return null;
+  }
+
   const addSession = () => {
+    const last = sessions[sessions.length - 1];
+    const lastError = last ? getSessionError(last, sessions.length - 1) : null;
+    setSessionError(lastError);
+    if (lastError) return;
     const id = newId("s");
     setSessions((s) => [...s, { id, date: "", startTime: "", endTime: "" }]);
     setExpandedSess((e) => [...e, id]);
   };
   const removeSession = (id: string) => {
+    setSessionError(null);
     setSessions((s) => s.filter((x) => x.id !== id));
     setTicketTypes((t) => t.filter((x) => x.sessionId !== id));
     setExpandedSess((e) => e.filter((x) => x !== id));
   };
-  const updateSession = (id: string, key: keyof DraftSession, val: string) =>
+  const updateSession = (id: string, key: keyof DraftSession, val: string) => {
+    setSessionError(null);
     setSessions((s) => s.map((x) => (x.id === id ? { ...x, [key]: val } : x)));
+  };
   const toggleSess = (id: string) => setExpandedSess((e) => (e.includes(id) ? e.filter((x) => x !== id) : [...e, id]));
 
   const addTicketType = (sessionId: string) =>
@@ -626,6 +646,7 @@ export function CreateEventForm({
                   </div>
                 ))}
               </div>
+              {sessionError && <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-4 py-3">{sessionError}</div>}
               <button
                 onClick={addSession}
                 className="w-full flex items-center justify-center gap-2 border border-dashed border-border rounded-2xl py-4 text-sm text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
