@@ -114,8 +114,22 @@ export default function MyEventsPage() {
     };
   }, [reloadKey]);
 
+  // Each opened event gets a history entry, so browser Back returns to the list.
+  useEffect(() => {
+    const onPop = () => setSelectedId(new URLSearchParams(window.location.search).get("event"));
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  function openEvent(id: string) {
+    window.history.pushState(null, "", `?event=${id}`);
+    setSelectedId(id);
+  }
+
+  const closeDetail = () => window.history.back();
+
   function handleBack() {
-    setSelectedId(null);
+    closeDetail();
     if (listStale) {
       // Show the new numbers immediately from the up-to-date detail record;
       // the refetch below then confirms them from the list API.
@@ -202,7 +216,7 @@ export default function MyEventsPage() {
         {detailStatus === "error" && (
           <div className="p-6 space-y-4">
             <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-2xl px-4 py-3">Failed to load event details.</div>
-            <button onClick={() => setSelectedId(null)} className="text-sm text-primary hover:text-primary/80 font-medium transition-colors">
+            <button onClick={closeDetail} className="text-sm text-primary hover:text-primary/80 font-medium transition-colors">
               ← Back to My Events
             </button>
           </div>
@@ -257,11 +271,11 @@ export default function MyEventsPage() {
               key={e.id}
               role="button"
               tabIndex={0}
-              onClick={() => setSelectedId(e.id)}
+              onClick={() => openEvent(e.id)}
               onKeyDown={(ev) => {
                 if (ev.target === ev.currentTarget && (ev.key === "Enter" || ev.key === " ")) {
                   ev.preventDefault();
-                  setSelectedId(e.id);
+                  openEvent(e.id);
                 }
               }}
               className="bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/40 transition-all text-left group cursor-pointer"
