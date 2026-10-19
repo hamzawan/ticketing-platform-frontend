@@ -374,8 +374,8 @@ export type MyEventsListResponse = {
   results: MyEventListItem[];
 };
 
-export async function getMyEvents(token?: string | null): Promise<MyEventsListResponse> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/my-events/list/`, {
+export async function getMyEvents(token?: string | null, page = 1): Promise<MyEventsListResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/my-events/list/?page=${page}`, {
     cache: "no-store",
     headers: {
       Accept: "application/json",

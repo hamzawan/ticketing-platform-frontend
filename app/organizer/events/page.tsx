@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { BookOpen, Calendar, ChevronRight, MapPin, Plus, Search } from "lucide-react";
+import { BookOpen, Calendar, ChevronRight, Loader2, MapPin, Plus, Search } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/badge";
 import { EventDetailPanel, getSessions } from "@/components/organizer/event-detail-panel";
@@ -77,6 +77,17 @@ export default function MyEventsPage() {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [events, setEvents] = useState<DisplayEvent[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // Infinite scroll: pages are appended as the sentinel below the list nears the viewport.
+  const [loadedPages, setLoadedPages] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
+  // Guards against duplicate requests while a page is in flight.
+  const inFlight = useRef(false);
+  // Mirrors loadedPages for the reload effect, which must not re-run when it grows.
+  const loadedPagesRef = useRef(0);
+  const hasLoaded = useRef(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<(typeof STATUS_FILTERS)[number]["value"]>("all");
@@ -88,31 +99,80 @@ export default function MyEventsPage() {
   const [listStale, setListStale] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
+  // Initial load, and reloads after an edit / Retry. A reload refetches every page
+  // already loaded so the list keeps its length and scroll position.
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
-      // Reloads after an edit keep the current cards on screen instead of flashing a skeleton.
-      if (reloadKey === 0) setStatus("loading");
+      // Reloads keep the current cards on screen instead of flashing a skeleton.
+      if (!hasLoaded.current) setStatus("loading");
+      inFlight.current = true;
       try {
-        const data = await getMyEvents(getStoredToken());
-        if (!cancelled) {
-          setEvents(toDisplayEvents(data.results));
-          setStatus("ready");
-        }
+        const token = getStoredToken();
+        const count = Math.max(loadedPagesRef.current, 1);
+        const responses = await Promise.all(Array.from({ length: count }, (_, i) => getMyEvents(token, i + 1)));
+        if (cancelled) return;
+        const last = responses[responses.length - 1];
+        setEvents(toDisplayEvents(responses.flatMap((r) => r.results)));
+        setHasMore(last.results.length > 0 && count * last.page_size < last.total);
+        loadedPagesRef.current = count;
+        setLoadedPages(count);
+        setLoadMoreError(null);
+        hasLoaded.current = true;
+        setStatus("ready");
       } catch (err) {
-        if (!cancelled) {
-          setErrorMessage(err instanceof Error ? err.message : "Unknown error");
-          setStatus("error");
-        }
+        if (cancelled) return;
+        setErrorMessage(err instanceof Error ? err.message : "Unknown error");
+        setStatus("error");
+      } finally {
+        if (!cancelled) inFlight.current = false;
       }
     }
 
     load();
     return () => {
       cancelled = true;
+      inFlight.current = false;
     };
   }, [reloadKey]);
+
+  const loadMore = useCallback(async () => {
+    if (inFlight.current || !hasMore) return;
+    inFlight.current = true;
+    setLoadingMore(true);
+    setLoadMoreError(null);
+    try {
+      const next = loadedPagesRef.current + 1;
+      const data = await getMyEvents(getStoredToken(), next);
+      const incoming = toDisplayEvents(data.results);
+      // De-dupe by id in case the list shifted between requests.
+      setEvents((prev) => {
+        const seen = new Set(prev.map((e) => e.id));
+        return [...prev, ...incoming.filter((e) => !seen.has(e.id))];
+      });
+      setHasMore(data.results.length > 0 && next * data.page_size < data.total);
+      loadedPagesRef.current = next;
+      setLoadedPages(next);
+    } catch (err) {
+      setLoadMoreError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      inFlight.current = false;
+      setLoadingMore(false);
+    }
+  }, [hasMore]);
+
+  // Fires loadMore when the sentinel scrolls near the viewport. Paused after an
+  // error so it doesn't retry in a loop; the Retry button resumes it.
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node || !hasMore || loadMoreError || status !== "ready" || selectedId) return;
+    const observer = new IntersectionObserver((entries) => entries[0]?.isIntersecting && loadMore(), {
+      rootMargin: "300px",
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasMore, loadMoreError, status, selectedId, loadMore, loadedPages]);
 
   // Each opened event gets a history entry, so browser Back returns to the list.
   useEffect(() => {
@@ -203,7 +263,16 @@ export default function MyEventsPage() {
       <div className="p-4 sm:p-6 space-y-5">
         {header}
         <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-2xl px-4 py-3">
-          Failed to load events{errorMessage ? `: ${errorMessage}` : "."}
+          Failed to load events{errorMessage ? `: ${errorMessage}` : "."}{" "}
+          <button
+            onClick={() => {
+              setStatus("loading");
+              setReloadKey((k) => k + 1);
+            }}
+            className="font-semibold underline"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -347,6 +416,25 @@ export default function MyEventsPage() {
             </div>
           ))}
           {filtered.length === 0 && <div className="text-center py-12 text-sm text-muted-foreground">No events match your search.</div>}
+        </div>
+      )}
+
+      {hasMore && (
+        <div ref={sentinelRef} className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground min-h-10">
+          {loadMoreError ? (
+            <>
+              <span className="text-red-700">Failed to load more events: {loadMoreError}</span>
+              <button onClick={() => { setLoadMoreError(null); }} className="font-semibold underline text-primary">
+                Retry
+              </button>
+            </>
+          ) : (
+            loadingMore && (
+              <>
+                <Loader2 size={14} className="animate-spin" /> Loading more events…
+              </>
+            )
+          )}
         </div>
       )}
     </div>
