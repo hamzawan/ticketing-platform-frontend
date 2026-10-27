@@ -57,6 +57,10 @@ function toDraft(s: PanelSession): SessionDraft {
   };
 }
 
+// Sold share to one decimal (2 of 1000 -> 0.2). Floored, so 998 of 1000 reads
+// 99.8 and only a fully sold-out type reads 100.
+const soldPercent = (sold: number, total: number) => (total > 0 ? Math.floor((sold * 1000) / total) / 10 : 0);
+
 function fmtTime(t: string | null | undefined): string {
   if (!t) return "—";
   const [hStr, m] = t.split(":");
@@ -169,7 +173,7 @@ function TicketTypesTable({
       <ul className="sm:hidden divide-y divide-border/50">
         {ticketTypes.map((tt) => {
           const sold = tt.quantity - tt.available_quantity;
-          const pct = tt.quantity > 0 ? Math.round((sold / tt.quantity) * 100) : 0;
+          const pct = soldPercent(sold, tt.quantity);
           return (
             <li key={tt.id} className="px-4 py-3 space-y-2">
               <div className="flex items-start justify-between gap-3">
@@ -222,7 +226,7 @@ function TicketTypesTable({
           <tbody>
             {ticketTypes.map((tt) => {
               const sold = tt.quantity - tt.available_quantity;
-              const pct = tt.quantity > 0 ? Math.round((sold / tt.quantity) * 100) : 0;
+              const pct = soldPercent(sold, tt.quantity);
               const low = tt.quantity > 0 && tt.available_quantity / tt.quantity < 0.15;
               return (
                 <tr key={tt.id} className="border-b border-border/50 last:border-0 hover:bg-secondary/20 transition-colors">
@@ -298,7 +302,7 @@ function SessionRow({
   const totalQty = tts.reduce((s, t) => s + t.quantity, 0);
   const totalAvail = tts.reduce((s, t) => s + t.available_quantity, 0);
   const sold = totalQty - totalAvail;
-  const pct = totalQty > 0 ? Math.round((sold / totalQty) * 100) : 0;
+  const pct = soldPercent(sold, totalQty);
 
   return (
     <div className={`border border-border rounded-xl overflow-hidden transition-all ${expanded ? "border-primary/40" : ""}`}>
