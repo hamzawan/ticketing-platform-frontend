@@ -775,8 +775,10 @@ export type BookingsResponse = {
   results: BookingItem[];
 };
 
-export async function getBookings(page = 1, token?: string | null): Promise<BookingsResponse> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/bookings/list/?page=${page}`, {
+export async function getBookings(page = 1, token?: string | null, status?: string): Promise<BookingsResponse> {
+  const params = new URLSearchParams({ page: String(page) });
+  if (status) params.set("status", status);
+  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/bookings/list/?${params}`, {
     cache: "no-store",
     headers: {
       Accept: "application/json",

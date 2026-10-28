@@ -33,6 +33,7 @@ function localDay(iso: string): string {
 export default function BookingsPage() {
   const [search, setSearch] = useState("");
   const [eventSel, setEventSel] = useState("all");
+  const [statusSel, setStatusSel] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
@@ -54,7 +55,7 @@ export default function BookingsPage() {
     async function load() {
       setLoadStatus("loading");
       try {
-        const response = await getBookings(page, getStoredToken());
+        const response = await getBookings(page, getStoredToken(), statusSel === "all" ? undefined : statusSel);
         if (cancelled) return;
         setData(response);
         setLoadStatus("ready");
@@ -69,9 +70,9 @@ export default function BookingsPage() {
     return () => {
       cancelled = true;
     };
-  }, [page, reloadKey]);
+  }, [page, statusSel, reloadKey]);
 
-  const hasFilters = Boolean(search || eventSel !== "all" || dateFrom || dateTo);
+  const hasFilters = Boolean(search || eventSel !== "all" || statusSel !== "all" || dateFrom || dateTo);
 
   // The API only paginates; search / event / date narrow the loaded page.
   const eventOptions = useMemo(
@@ -95,6 +96,8 @@ export default function BookingsPage() {
   function resetFilters() {
     setSearch("");
     setEventSel("all");
+    setStatusSel("all");
+    setPage(1);
     setDateFrom("");
     setDateTo("");
   }
@@ -122,6 +125,22 @@ export default function BookingsPage() {
           ariaLabel="Filter by event"
           className="w-full sm:w-56"
           options={[{ value: "all", label: "All Events" }, ...eventOptions.map((name) => ({ value: name, label: name }))]}
+        />
+        <Select
+          value={statusSel}
+          onChange={(v) => {
+            setStatusSel(v);
+            setPage(1);
+          }}
+          ariaLabel="Filter by status"
+          className="w-full sm:w-40"
+          options={[
+            { value: "all", label: "All Status" },
+            { value: "paid", label: "Paid" },
+            { value: "pending", label: "Pending" },
+            { value: "cancelled", label: "Cancelled" },
+            { value: "expired", label: "Expired" },
+          ]}
         />
         <div className="flex items-center justify-between gap-2 flex-1 sm:flex-none min-w-0 bg-card border border-border rounded-xl px-4 py-2.5">
           <span className="text-xs text-muted-foreground">From</span>
