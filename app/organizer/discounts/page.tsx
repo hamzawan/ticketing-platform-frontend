@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle, Copy, Plus, Trash2, X, XCircle } from "lucide-react";
+import { CheckCircle, Copy, ListFilter, Plus, Trash2, X, XCircle } from "lucide-react";
 import {
   ACCESS_TOKEN_STORAGE_KEY,
   ApiError,
@@ -52,6 +52,7 @@ export default function DiscountsPage() {
   const [show, setShow] = useState(false);
   const [events, setEvents] = useState<MyEventListItem[]>([]);
   const [filterEventId, setFilterEventId] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<DiscountsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -88,7 +89,7 @@ export default function DiscountsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    getDiscounts(page, filterEventId || null, getToken())
+    getDiscounts(page, filterEventId || null, getToken(), filterStatus || null)
       .then((res) => {
         if (cancelled) return;
         setData(res);
@@ -104,7 +105,7 @@ export default function DiscountsPage() {
     return () => {
       cancelled = true;
     };
-  }, [page, filterEventId, reloadKey]);
+  }, [page, filterEventId, filterStatus, reloadKey]);
 
   // The list items don't carry sessions/ticket types, so fetch the selected event.
   const [eventDetail, setEventDetail] = useState<OrganizerEvent | null>(null);
@@ -321,10 +322,10 @@ export default function DiscountsPage() {
           </div>
         </div>
       )}
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground font-medium">
-          Event
-        </span>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-card border border-border text-muted-foreground flex-shrink-0">
+          <ListFilter size={15} />
+        </div>
         <Select
           className="w-full sm:w-64"
           value={filterEventId}
@@ -335,6 +336,22 @@ export default function DiscountsPage() {
           placeholder="All events"
           ariaLabel="Filter by event"
           options={[{ value: "", label: "All events" }, ...events.map((ev) => ({ value: ev.id, label: ev.name }))]}
+        />
+        <Select
+          className="w-full sm:w-44"
+          value={filterStatus}
+          onChange={(v) => {
+            setFilterStatus(v);
+            setPage(1);
+          }}
+          placeholder="All status"
+          ariaLabel="Filter by status"
+          options={[
+            { value: "", label: "All status" },
+            { value: "scheduled", label: "Scheduled" },
+            { value: "active", label: "Active" },
+            { value: "expired", label: "Expired" },
+          ]}
         />
       </div>
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
@@ -366,7 +383,7 @@ export default function DiscountsPage() {
                     </td>
                     <td className="p-4 text-xs text-muted-foreground whitespace-nowrap">{fmtExpiry(d.end_at)}</td>
                     <td className="p-4">
-                      <StatusBadge status={isExpired(d) ? "expired" : "active"} />
+                      <StatusBadge status={d.status?.toLowerCase() ?? (isExpired(d) ? "expired" : "active")} />
                     </td>
                     <td className="p-4">
                       <div className="flex gap-2">

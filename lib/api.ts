@@ -842,9 +842,15 @@ export type CreateDiscountPayload = {
   end_at: string;
 };
 
-export async function getDiscounts(page = 1, eventId?: string | null, token?: string | null): Promise<DiscountsResponse> {
+export async function getDiscounts(
+  page = 1,
+  eventId?: string | null,
+  token?: string | null,
+  status?: string | null,
+): Promise<DiscountsResponse> {
   const params = new URLSearchParams({ page: String(page) });
   if (eventId) params.set("event_id", eventId);
+  if (status) params.set("status", status);
   const res = await fetch(`${API_BASE_URL}/api/v1/organizer/discounts/list/?${params}`, {
     cache: "no-store",
     headers: {
