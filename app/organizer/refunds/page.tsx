@@ -110,7 +110,7 @@ export default function RefundsPage() {
             className="flex-1 min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
         </div>
-        <div className="flex items-center gap-1 bg-card border border-border rounded-xl p-1">
+        <div className="flex items-center gap-1 bg-card border border-border rounded-xl p-1 max-w-full overflow-x-auto">
           {STATUS_FILTERS.map((s) => (
             <button
               key={s.value}
@@ -168,7 +168,7 @@ export default function RefundsPage() {
       {toast && (
         <div
           role="status"
-          className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 max-w-sm rounded-xl border px-4 py-3 shadow-lg text-sm font-medium ${
+          className={`fixed bottom-4 left-4 right-4 sm:left-auto sm:bottom-6 sm:right-6 z-50 flex items-center gap-3 sm:max-w-sm rounded-xl border px-4 py-3 shadow-lg text-sm font-medium ${
             toast.type === "success"
               ? "bg-emerald-50 border-emerald-200 text-emerald-800"
               : "bg-red-50 border-red-200 text-red-700"

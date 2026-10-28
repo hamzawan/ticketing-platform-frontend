@@ -59,14 +59,14 @@ export function RefundsTable({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[960px] lg:min-w-0 text-sm">
+      <table className="w-full min-w-[960px] xl:min-w-0 text-sm">
         <thead className="border-b border-border bg-secondary/30">
           <tr>
             {["Customer", "Event", "Reason", "Qty", "Amount", "Requested", "Status", "Actions"].map((h) => (
               <th
                 key={h}
                 className={`text-left text-xs text-muted-foreground font-semibold px-5 py-3 whitespace-nowrap ${
-                  h === "Actions" ? "lg:sticky lg:right-0 bg-secondary/40 lg:shadow-[-4px_0_6px_rgba(0,0,0,0.04)]" : ""
+                  h === "Actions" ? "xl:sticky xl:right-0 bg-secondary/40 xl:shadow-[-4px_0_6px_rgba(0,0,0,0.04)]" : ""
                 }`}
               >
                 {h}
@@ -99,7 +99,7 @@ export function RefundsTable({
                   <StatusBadge status={status} />
                 </td>
                 <td
-                  className={`px-5 py-4 lg:sticky lg:right-0 lg:shadow-[-4px_0_6px_rgba(0,0,0,0.04)] ${confirming ? "bg-amber-50" : "bg-card"}`}
+                  className={`px-5 py-4 xl:sticky xl:right-0 xl:shadow-[-4px_0_6px_rgba(0,0,0,0.04)] ${confirming ? "bg-amber-50" : "bg-card"}`}
                 >
                   {isPending && !confirming && (
                     <div className="flex items-center gap-2">
