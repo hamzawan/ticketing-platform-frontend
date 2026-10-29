@@ -634,8 +634,24 @@ export default function OrganizerAuthPage() {
 
                 <p className="text-xs text-muted-foreground text-center pt-1">
                   By signing up you agree to our{" "}
-                  <span className="text-primary cursor-pointer hover:underline">Terms of Service</span> and{" "}
-                  <span className="text-primary cursor-pointer hover:underline">Privacy Policy</span>.
+                  <a
+                    href="https://thebigbounceamerica.com/privacy-policy/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary cursor-pointer hover:underline"
+                  >
+                    Terms of Service
+                  </a>{" "}
+                  and{" "}
+                  <a
+                    href="https://thebigbounceamerica.com/privacy-policy/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary cursor-pointer hover:underline"
+                  >
+                    Privacy Policy
+                  </a>
+                  .
                 </p>
               </form>
             ))}
