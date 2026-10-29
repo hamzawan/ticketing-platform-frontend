@@ -170,7 +170,11 @@ export function CreateEventForm({
     const last = sessions[sessions.length - 1];
     const lastError = last ? getSessionError(last, sessions.length - 1) : null;
     setSessionError(lastError);
-    if (lastError) return;
+    if (lastError) {
+      markShown(2);
+      return;
+    }
+    markShown(2, false);
     const id = newId("s");
     setSessions((s) => [...s, { id, date: "", startTime: "", endTime: "" }]);
     setExpandedSess((e) => [...e, id]);
@@ -209,18 +213,68 @@ export function CreateEventForm({
     return hasPast ? "Event dates can't be in the past. Choose today or a future date." : null;
   }
 
-  function validateForm(): string | null {
-    if (!form.name.trim() || !form.venue.trim()) return "Event name and venue are required.";
-    const pastDateError = getPastDateError();
-    if (pastDateError) return pastDateError;
-    if (mapStatus.resolving) return "Still resolving the Google Maps link — please wait a moment.";
-    if (mapStatus.error) return mapStatus.error;
-    const first = sessions[0];
-    const hasTickets = ticketTypes.some((t) => t.name.trim());
-    if (hasTickets && (!first?.date || !first?.startTime || !first?.endTime)) {
-      return "The first session's date, start time, and end time are required when ticket types are added.";
+  // Each step validates only its own fields; errors show once that step's Next/submit was tried.
+  const [showErrors, setShowErrors] = useState<Record<number, boolean>>({});
+  const markShown = (step: number, on = true) => setShowErrors((p) => ({ ...p, [step]: on }));
+
+  const infoErrors: { name?: string; venue?: string; minAge?: string; maxAge?: string; map?: string } = {};
+  if (!form.name.trim()) infoErrors.name = "Event name is required.";
+  if (!form.venue.trim()) infoErrors.venue = "Venue is required.";
+  const minAge = parseAgeInput(form.minAge);
+  const maxAge = parseAgeInput(form.maxAge);
+  if (form.minAge.trim() && (minAge === null || minAge < 0)) infoErrors.minAge = "Enter a valid age.";
+  if (form.maxAge.trim() && (maxAge === null || maxAge < 0)) infoErrors.maxAge = "Enter a valid age.";
+  else if (minAge !== null && maxAge !== null && maxAge < minAge) infoErrors.maxAge = "Max age can't be less than min age.";
+  if (mapStatus.resolving) infoErrors.map = "Still resolving the Google Maps link — please wait a moment.";
+  else if (mapStatus.error) infoErrors.map = mapStatus.error;
+
+  function getSessionFieldErrors(s: DraftSession, idx: number): { date?: string; startTime?: string; endTime?: string } {
+    const e: { date?: string; startTime?: string; endTime?: string } = {};
+    if (!s.date) e.date = "Date is required.";
+    else if (s.date < todayInputValue() && !(idx === 0 && s.date === initialEvent?.event_date)) e.date = "Date can't be in the past.";
+    if (!s.startTime) e.startTime = "Start time is required.";
+    if (!s.endTime) e.endTime = "End time is required.";
+    else if (s.startTime && s.endTime <= s.startTime) e.endTime = "End time must be after the start time.";
+    return e;
+  }
+  const sessionsInvalid = sessions.some((s, i) => Object.keys(getSessionFieldErrors(s, i)).length > 0);
+
+  // Blank rows are ignored (buildPayload drops them); a row with anything filled in must be complete.
+  function getTicketFieldErrors(t: DraftTicketType): { name?: string; price?: string; qty?: string } {
+    if (!t.name.trim() && !t.price.trim() && !t.qty.trim()) return {};
+    const e: { name?: string; price?: string; qty?: string } = {};
+    if (!t.name.trim()) e.name = "name";
+    const price = Number(t.price);
+    if (!t.price.trim() || !Number.isFinite(price) || price < 0) e.price = "price (0 or more)";
+    const qty = Number(t.qty);
+    if (!t.qty.trim() || !Number.isInteger(qty) || qty < 1) e.qty = "quantity (a whole number, 1 or more)";
+    return e;
+  }
+
+  const sessionHasTicket = (sessionId: string) => ticketTypes.some((t) => t.sessionId === sessionId && t.name.trim());
+
+  function getTicketsError(): string | null {
+    if (ticketTypes.some((t) => Object.keys(getTicketFieldErrors(t)).length > 0)) {
+      return "Complete or remove the highlighted ticket types.";
+    }
+    // The API rejects any session without ticket types ("sessions.N.ticket_types: List should have at least 1 item").
+    const empty = sessions.map((s, i) => (sessionHasTicket(s.id) ? -1 : i)).filter((i) => i >= 0);
+    if (empty.length) {
+      return empty.length === 1 && sessions.length === 1
+        ? "Add at least one ticket type with a name, price, and quantity."
+        : `Add at least one ticket type to ${empty.map((i) => `Session ${i + 1}`).join(", ")}.`;
     }
     return null;
+  }
+  // Live, so the message disappears as soon as the problem is fixed.
+  const ticketsError = showErrors[3] ? getTicketsError() : null;
+
+  // Submit-time check: also expands sessions that are missing ticket types so the problem is visible.
+  function validateTickets(): boolean {
+    markShown(3);
+    if (!getTicketsError()) return true;
+    setExpandedSess((e) => Array.from(new Set([...e, ...sessions.filter((s) => !sessionHasTicket(s.id)).map((s) => s.id)])));
+    return false;
   }
 
   function buildPayload(): CreateEventPayload {
@@ -298,11 +352,7 @@ export function CreateEventForm({
   async function handleCreateEvent() {
     if (submitting) return;
     setError(null);
-    const validationError = validateForm();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
+    if (!validateTickets()) return;
     setSubmitting(true);
     try {
       const created = await createEvent(buildPayload(), getAccessToken());
@@ -317,11 +367,7 @@ export function CreateEventForm({
 
   function goToReviewStep() {
     setError(null);
-    const validationError = validateForm();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
+    if (!validateTickets()) return;
     setStep(4);
   }
 
@@ -446,8 +492,9 @@ export function CreateEventForm({
                     value={form.name}
                     onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                     placeholder="e.g. Big Bounce America — Houston"
-                    className={inp}
+                    className={`${inp} ${showErrors[1] && infoErrors.name ? "border-red-400!" : ""}`}
                   />
+                  {showErrors[1] && infoErrors.name && <p className="text-[11px] text-red-600 mt-1.5">{infoErrors.name}</p>}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -456,8 +503,9 @@ export function CreateEventForm({
                       value={form.venue}
                       onChange={(e) => setForm((f) => ({ ...f, venue: e.target.value }))}
                       placeholder="e.g. Houston Bounce Arena"
-                      className={inp}
+                      className={`${inp} ${showErrors[1] && infoErrors.venue ? "border-red-400!" : ""}`}
                     />
+                    {showErrors[1] && infoErrors.venue && <p className="text-[11px] text-red-600 mt-1.5">{infoErrors.venue}</p>}
                   </div>
                   <div>
                     <label className={lbl}>City</label>
@@ -486,8 +534,9 @@ export function CreateEventForm({
                       value={form.minAge}
                       onChange={(e) => setForm((f) => ({ ...f, minAge: e.target.value }))}
                       placeholder="e.g. 3"
-                      className={inp}
+                      className={`${inp} ${showErrors[1] && infoErrors.minAge ? "border-red-400!" : ""}`}
                     />
+                    {showErrors[1] && infoErrors.minAge && <p className="text-[11px] text-red-600 mt-1.5">{infoErrors.minAge}</p>}
                   </div>
                   <div>
                     <label className={lbl}>Max Age (optional)</label>
@@ -497,8 +546,9 @@ export function CreateEventForm({
                       value={form.maxAge}
                       onChange={(e) => setForm((f) => ({ ...f, maxAge: e.target.value }))}
                       placeholder="e.g. 12"
-                      className={inp}
+                      className={`${inp} ${showErrors[1] && infoErrors.maxAge ? "border-red-400!" : ""}`}
                     />
+                    {showErrors[1] && infoErrors.maxAge && <p className="text-[11px] text-red-600 mt-1.5">{infoErrors.maxAge}</p>}
                   </div>
                 </div>
               </div>
@@ -530,8 +580,8 @@ export function CreateEventForm({
                     placeholder="https://maps.app.goo.gl/..."
                     className={inp}
                   />
-                  {mapStatus.error ? (
-                    <p className="text-[11px] text-red-600 mt-1.5 leading-relaxed">{mapStatus.error}</p>
+                  {mapStatus.error || (showErrors[1] && infoErrors.map) ? (
+                    <p className="text-[11px] text-red-600 mt-1.5 leading-relaxed">{mapStatus.error ?? infoErrors.map}</p>
                   ) : (
                     <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
                       {mapStatus.resolving ? "Resolving link…" : <>In Google Maps, click <span className="font-semibold">Share → Copy link</span> and paste it here. The <code className="bg-secondary px-1 py-0.5 rounded text-[10px]">src</code> of <span className="font-semibold">Embed a map</span> also works.</>}
@@ -595,7 +645,11 @@ export function CreateEventForm({
                   </button>
                 )}
                 <button
-                  onClick={() => setStep(2)}
+                  onClick={() => {
+                    markShown(1);
+                    if (Object.keys(infoErrors).length > 0) return;
+                    setStep(2);
+                  }}
                   className="flex items-center gap-2 bg-primary text-white font-semibold px-6 py-2.5 rounded-xl hover:bg-primary/90 transition-colors text-sm ml-auto"
                 >
                   Next: Sessions <ChevronRight size={14} />
@@ -611,7 +665,9 @@ export function CreateEventForm({
                 Add every date and time slot for this event. Each entry is one bookable session customers will choose from.
               </p>
               <div className="space-y-3">
-                {sessions.map((s, idx) => (
+                {sessions.map((s, idx) => {
+                  const fe = showErrors[2] ? getSessionFieldErrors(s, idx) : {};
+                  return (
                   <div key={s.id} className="bg-card border border-border rounded-2xl p-5 space-y-4">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -627,7 +683,8 @@ export function CreateEventForm({
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
                         <label className={lbl}>Date</label>
-                        <input type="date" min={todayInputValue()} value={s.date} onChange={(e) => updateSession(s.id, "date", e.target.value)} className={inp} />
+                        <input type="date" min={todayInputValue()} value={s.date} onChange={(e) => updateSession(s.id, "date", e.target.value)} className={`${inp} ${fe.date ? "border-red-400!" : ""}`} />
+                        {fe.date && <p className="text-[11px] text-red-600 mt-1.5">{fe.date}</p>}
                       </div>
                       <div>
                         <label className={lbl}>Start Time</label>
@@ -635,16 +692,19 @@ export function CreateEventForm({
                           type="time"
                           value={s.startTime}
                           onChange={(e) => updateSession(s.id, "startTime", e.target.value)}
-                          className={inp}
+                          className={`${inp} ${fe.startTime ? "border-red-400!" : ""}`}
                         />
+                        {fe.startTime && <p className="text-[11px] text-red-600 mt-1.5">{fe.startTime}</p>}
                       </div>
                       <div>
                         <label className={lbl}>End Time</label>
-                        <input type="time" value={s.endTime} onChange={(e) => updateSession(s.id, "endTime", e.target.value)} className={inp} />
+                        <input type="time" value={s.endTime} onChange={(e) => updateSession(s.id, "endTime", e.target.value)} className={`${inp} ${fe.endTime ? "border-red-400!" : ""}`} />
+                        {fe.endTime && <p className="text-[11px] text-red-600 mt-1.5">{fe.endTime}</p>}
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
               {sessionError && <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-4 py-3">{sessionError}</div>}
               <button
@@ -673,6 +733,8 @@ export function CreateEventForm({
                 </div>
                 <button
                   onClick={() => {
+                    markShown(2);
+                    if (sessionsInvalid) return;
                     sessions.forEach((s) => {
                       if (!ticketTypes.some((t) => t.sessionId === s.id)) addTicketType(s.id);
                     });
@@ -735,13 +797,18 @@ export function CreateEventForm({
                                   </span>
                                 ))}
                               </div>
-                              {sessTickets.map((tt) => (
-                                <div key={tt.id} className="grid grid-cols-2 sm:grid-cols-[1fr_90px_90px_32px] gap-3 items-center">
+                              {sessTickets.map((tt) => {
+                                const te = showErrors[3] ? getTicketFieldErrors(tt) : {};
+                                const missing = [te.name, te.price, te.qty].filter(Boolean);
+                                const bad = (k: boolean) => (k ? " border-red-400!" : "");
+                                return (
+                                <div key={tt.id}>
+                                <div className="grid grid-cols-2 sm:grid-cols-[1fr_90px_90px_32px] gap-3 items-center">
                                   <input
                                     value={tt.name}
                                     onChange={(e) => updateTicketType(tt.id, "name", e.target.value)}
                                     placeholder="e.g. General Admission"
-                                    className="col-span-2 sm:col-span-1 bg-background border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground"
+                                    className={"col-span-2 sm:col-span-1 bg-background border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground" + bad(!!te.name)}
                                   />
                                   <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs pointer-events-none">$</span>
@@ -749,14 +816,14 @@ export function CreateEventForm({
                                       value={tt.price}
                                       onChange={(e) => updateTicketType(tt.id, "price", e.target.value)}
                                       placeholder="0"
-                                      className="w-full bg-background border border-border rounded-lg pl-6 pr-3 py-2 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground"
+                                      className={"w-full bg-background border border-border rounded-lg pl-6 pr-3 py-2 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground" + bad(!!te.price)}
                                     />
                                   </div>
                                   <input
                                     value={tt.qty}
                                     onChange={(e) => updateTicketType(tt.id, "qty", e.target.value)}
                                     placeholder="100"
-                                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground"
+                                    className={"w-full bg-background border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground" + bad(!!te.qty)}
                                   />
                                   <button
                                     onClick={() => removeTicketType(tt.id)}
@@ -766,8 +833,14 @@ export function CreateEventForm({
                                     <X size={13} />
                                   </button>
                                 </div>
-                              ))}
+                                {missing.length > 0 && <p className="text-[11px] text-red-600 mt-1">Enter a valid {missing.join(", ")}.</p>}
+                                </div>
+                                );
+                              })}
                             </div>
+                          )}
+                          {showErrors[3] && !sessionHasTicket(s.id) && (
+                            <p className="px-5 pt-4 text-[11px] text-red-600">Add at least one ticket type with a name, price, and quantity.</p>
                           )}
                           <div className="px-5 py-4">
                             <button onClick={() => addTicketType(s.id)} className="flex items-center gap-1.5 text-xs text-primary font-semibold hover:underline transition-colors">
@@ -781,7 +854,7 @@ export function CreateEventForm({
                 })}
               </div>
 
-              {error && <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-4 py-3">{error}</div>}
+              {(ticketsError ?? error) && <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-4 py-3">{ticketsError ?? error}</div>}
 
               <div className="flex items-center justify-between gap-3 pt-1">
                 <div className="flex items-center gap-2">
