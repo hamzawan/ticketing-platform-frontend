@@ -217,7 +217,7 @@ export function CreateEventForm({
   const [showErrors, setShowErrors] = useState<Record<number, boolean>>({});
   const markShown = (step: number, on = true) => setShowErrors((p) => ({ ...p, [step]: on }));
 
-  const infoErrors: { name?: string; venue?: string; minAge?: string; maxAge?: string; map?: string } = {};
+  const infoErrors: { name?: string; venue?: string; minAge?: string; maxAge?: string; address?: string; map?: string } = {};
   if (!form.name.trim()) infoErrors.name = "Event name is required.";
   if (!form.venue.trim()) infoErrors.venue = "Venue is required.";
   const minAge = parseAgeInput(form.minAge);
@@ -225,7 +225,9 @@ export function CreateEventForm({
   if (form.minAge.trim() && (minAge === null || minAge < 0)) infoErrors.minAge = "Enter a valid age.";
   if (form.maxAge.trim() && (maxAge === null || maxAge < 0)) infoErrors.maxAge = "Enter a valid age.";
   else if (minAge !== null && maxAge !== null && maxAge < minAge) infoErrors.maxAge = "Max age can't be less than min age.";
-  if (mapStatus.resolving) infoErrors.map = "Still resolving the Google Maps link — please wait a moment.";
+  if (!form.address.trim()) infoErrors.address = "Full address is required.";
+  if (!form.mapUrl.trim()) infoErrors.map = "Google Maps link is required.";
+  else if (mapStatus.resolving) infoErrors.map = "Still resolving the Google Maps link — please wait a moment.";
   else if (mapStatus.error) infoErrors.map = mapStatus.error;
 
   function getSessionFieldErrors(s: DraftSession, idx: number): { date?: string; startTime?: string; endTime?: string } {
@@ -560,7 +562,7 @@ export function CreateEventForm({
                     <MapPin size={14} className="text-primary" /> Location Pin
                   </h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Add a full street address and paste a Google Maps embed link to show a map on your event page.
+                    Both the full street address and a Google Maps link are required to show a map on your event page.
                   </p>
                 </div>
                 <div>
@@ -569,8 +571,9 @@ export function CreateEventForm({
                     value={form.address}
                     onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
                     placeholder="e.g. 8000 Kirby Dr, Houston, TX 77054"
-                    className={inp}
+                    className={`${inp} ${showErrors[1] && infoErrors.address ? "border-red-400!" : ""}`}
                   />
+                  {showErrors[1] && infoErrors.address && <p className="text-[11px] text-red-600 mt-1.5">{infoErrors.address}</p>}
                 </div>
                 <div>
                   <label className={lbl}>Google Maps Link</label>
@@ -578,7 +581,7 @@ export function CreateEventForm({
                     value={form.mapUrl}
                     onChange={(e) => handleMapUrlChange(e.target.value)}
                     placeholder="https://maps.app.goo.gl/..."
-                    className={inp}
+                    className={`${inp} ${mapStatus.error || (showErrors[1] && infoErrors.map) ? "border-red-400!" : ""}`}
                   />
                   {mapStatus.error || (showErrors[1] && infoErrors.map) ? (
                     <p className="text-[11px] text-red-600 mt-1.5 leading-relaxed">{mapStatus.error ?? infoErrors.map}</p>
