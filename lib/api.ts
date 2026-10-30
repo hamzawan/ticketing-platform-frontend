@@ -432,7 +432,25 @@ function buildEventFormData(payload: CreateEventPayload): FormData {
   return body;
 }
 
+const DEFAULT_EVENT_IMAGE_PATH = "/images/big-bounce-default.png";
+
+// Events created without an uploaded image get the bundled Big Bounce America cover.
+async function loadDefaultEventImage(): Promise<File | null> {
+  try {
+    const res = await fetch(DEFAULT_EVENT_IMAGE_PATH);
+    if (!res.ok) return null;
+    return new File([await res.blob()], "big-bounce-default.png", { type: "image/png" });
+  } catch {
+    return null;
+  }
+}
+
 export async function createEvent(payload: CreateEventPayload, token?: string | null): Promise<OrganizerEvent> {
+  if (payload.images.length === 0) {
+    const fallback = await loadDefaultEventImage();
+    if (fallback) payload = { ...payload, images: [fallback] };
+  }
+
   const res = await fetch(`${API_BASE_URL}/api/v1/events/create/`, {
     method: "POST",
     headers: {
