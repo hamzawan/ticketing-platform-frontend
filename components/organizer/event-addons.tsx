@@ -242,32 +242,42 @@ export function EventAddOns({ eventId, editable, onToast }: { eventId: string; e
               {data.results.map((a) => {
                 const img = resolveMediaUrl(a.image);
                 return (
-                  <li key={a.id} className="p-4 flex items-start gap-3">
-                    <div className="w-16 h-16 rounded-xl bg-secondary overflow-hidden flex-shrink-0">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      {img && <img src={img} alt={a.name} className="w-full h-full object-cover" />}
+                  <li key={a.id} className="p-4 flex flex-wrap sm:flex-nowrap items-start sm:items-center gap-x-3 sm:gap-x-4 gap-y-3">
+                    <div className="w-16 h-16 rounded-xl bg-secondary overflow-hidden flex-shrink-0 flex items-center justify-center text-muted-foreground">
+                      {img ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={img} alt={a.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <ImagePlus size={18} aria-hidden />
+                      )}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <span className="text-sm font-semibold break-words">{a.name}</span>
-                        <span className="text-xs font-semibold text-accent">{formatMoney(a.price)}</span>
+                    <div className="min-w-0 flex-1 basis-0 space-y-1.5">
+                      <div className="flex items-start gap-2">
+                        <span className="min-w-0 text-sm font-semibold leading-snug break-words line-clamp-2">{a.name}</span>
                         <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            a.is_active ? "bg-emerald-50 text-emerald-700" : "bg-secondary text-muted-foreground"
+                          className={`flex-shrink-0 whitespace-nowrap text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                            a.is_active
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : "bg-secondary text-muted-foreground border-border"
                           }`}
                         >
                           {a.is_active ? "Active" : "Inactive"}
                         </span>
                       </div>
-                      {a.description && <p className="text-xs text-muted-foreground mt-1 break-words line-clamp-2">{a.description}</p>}
+                      <div className="text-base font-semibold leading-6 text-slate-700 font-(family-name:--font-display)">{formatMoney(a.price)}</div>
+                      {a.description && (
+                        <p title={a.description} className="text-xs text-muted-foreground leading-relaxed break-words line-clamp-2">
+                          {a.description}
+                        </p>
+                      )}
                     </div>
                     {editable && (
-                      <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="flex items-center gap-2 flex-shrink-0 basis-full justify-end sm:basis-auto sm:justify-start">
                         <button
                           type="button"
                           onClick={() => toggleActive(a)}
                           disabled={togglingId === a.id}
-                          className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-border hover:bg-secondary transition-colors disabled:opacity-50"
+                          className="h-8 whitespace-nowrap text-xs font-semibold px-3 rounded-lg border border-border hover:bg-secondary transition-colors disabled:opacity-50"
                         >
                           {a.is_active ? "Deactivate" : "Activate"}
                         </button>
@@ -275,7 +285,8 @@ export function EventAddOns({ eventId, editable, onToast }: { eventId: string; e
                           type="button"
                           onClick={() => setModal({ addOn: a })}
                           aria-label={`Edit ${a.name}`}
-                          className="text-muted-foreground hover:text-foreground"
+                          title="Edit"
+                          className="w-8 h-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                         >
                           <Edit2 size={13} />
                         </button>
