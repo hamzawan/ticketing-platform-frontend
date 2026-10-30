@@ -895,3 +895,98 @@ export async function deleteDiscount(discountId: string, token?: string | null):
     throw new ApiError(await readErrorDetail(res, "Failed to delete discount. Please try again."), res.status);
   }
 }
+
+export type AddOnItem = {
+  id: string;
+  event_id: string;
+  name: string;
+  description: string | null;
+  price: string;
+  image: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AddOnsResponse = {
+  page: number;
+  page_size: number;
+  total: number;
+  results: AddOnItem[];
+};
+
+export type AddOnPayload = {
+  name: string;
+  price: string;
+  description: string;
+  is_active: boolean;
+  // A newly chosen file; omit to leave the current image untouched.
+  image?: File | null;
+  // Update only: clears the stored image.
+  remove_image?: boolean;
+};
+
+export async function getAddOns(eventId: string, page = 1, token?: string | null): Promise<AddOnsResponse> {
+  const params = new URLSearchParams({ page: String(page), event_id: eventId });
+  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/add-ons/list/?${params}`, {
+    cache: "no-store",
+    headers: {
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!res.ok) {
+    throw new ApiError(await readErrorDetail(res, "Failed to load add-ons."), res.status);
+  }
+
+  return res.json() as Promise<AddOnsResponse>;
+}
+
+// Create and update both take multipart/form-data (the image is a file part).
+function buildAddOnFormData(payload: AddOnPayload): FormData {
+  const body = new FormData();
+  body.append("name", payload.name);
+  body.append("price", payload.price);
+  body.append("description", payload.description);
+  body.append("is_active", String(payload.is_active));
+  if (payload.image) body.append("image", payload.image, payload.image.name);
+  if (payload.remove_image) body.append("remove_image", "true");
+  return body;
+}
+
+export async function createAddOn(eventId: string, payload: AddOnPayload, token?: string | null): Promise<AddOnItem> {
+  const body = buildAddOnFormData(payload);
+  body.append("event_id", eventId);
+  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/add-ons/create/`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body,
+  });
+
+  if (!res.ok) {
+    throw new ApiError(await readErrorDetail(res, "Failed to create add-on. Please try again."), res.status);
+  }
+
+  return res.json() as Promise<AddOnItem>;
+}
+
+export async function updateAddOn(addOnId: string, payload: AddOnPayload, token?: string | null): Promise<AddOnItem> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/add-ons/${addOnId}/update/`, {
+    method: "PUT",
+    headers: {
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: buildAddOnFormData(payload),
+  });
+
+  if (!res.ok) {
+    throw new ApiError(await readErrorDetail(res, "Failed to update add-on. Please try again."), res.status);
+  }
+
+  return res.json() as Promise<AddOnItem>;
+}
