@@ -191,11 +191,38 @@ export function CreateEventForm({
   };
   const toggleSess = (id: string) => setExpandedSess((e) => (e.includes(id) ? e.filter((x) => x !== id) : [...e, id]));
 
-  const addTicketType = (sessionId: string) =>
+  // Like addSession: the newest incomplete row blocks adding another and gets one short message
+  // plus red borders on its bad fields (no per-field text).
+  const [ticketAddError, setTicketAddError] = useState<string | null>(null);
+  const [flaggedTickets, setFlaggedTickets] = useState<string[]>([]);
+  const addTicketType = (sessionId: string) => {
+    const rows = ticketTypes.filter((t) => t.sessionId === sessionId);
+    const idx = rows.findIndex((t) => Object.keys(getTicketFieldErrors(t)).length > 0);
+    if (idx >= 0) {
+      const t = rows[idx];
+      const errs = getTicketFieldErrors(t);
+      const labels = { name: "name", price: "price", qty: "quantity" } as const;
+      const keys = (Object.keys(errs) as (keyof typeof labels)[]);
+      const empty = keys.filter((k) => !t[k].trim()).map((k) => labels[k]);
+      const invalid = keys.filter((k) => t[k].trim()).map((k) => labels[k]);
+      const parts = [empty.length && `enter the ${empty.join(", ")}`, invalid.length && `enter a valid ${invalid.join(", ")}`].filter(Boolean);
+      setTicketAddError(`Ticket type ${idx + 1}: please ${parts.join(" and ")} before adding another ticket type.`);
+      setFlaggedTickets((f) => [...f, t.id]);
+      return;
+    }
+    setTicketAddError(null);
+    setFlaggedTickets([]);
     setTicketTypes((t) => [...t, { id: newId("tt"), sessionId, name: "", price: "", qty: "" }]);
-  const removeTicketType = (id: string) => setTicketTypes((t) => t.filter((x) => x.id !== id));
-  const updateTicketType = (id: string, key: keyof DraftTicketType, val: string) =>
+  };
+  const removeTicketType = (id: string) => {
+    setTicketAddError(null);
+    setFlaggedTickets([]);
+    setTicketTypes((t) => t.filter((x) => x.id !== id));
+  };
+  const updateTicketType = (id: string, key: keyof DraftTicketType, val: string) => {
+    setTicketAddError(null);
     setTicketTypes((t) => t.map((x) => (x.id === id ? { ...x, [key]: val } : x)));
+  };
 
   const totalRevEstimate = ticketTypes.reduce((sum, t) => sum + (parseFloat(t.price) || 0) * (parseInt(t.qty) || 0), 0);
 
@@ -215,6 +242,9 @@ export function CreateEventForm({
 
   // Each step validates only its own fields; errors show once that step's Next/submit was tried.
   const [showErrors, setShowErrors] = useState<Record<number, boolean>>({});
+  // A field shows its own error once the user has left it (or after Next/submit was tried).
+  const [touchedTickets, setTouchedTickets] = useState<Record<string, boolean>>({});
+  const touchTicket = (id: string, key: string) => setTouchedTickets((p) => (p[`${id}:${key}`] ? p : { ...p, [`${id}:${key}`]: true }));
   const markShown = (step: number, on = true) => setShowErrors((p) => ({ ...p, [step]: on }));
 
   const infoErrors: { name?: string; venue?: string; minAge?: string; maxAge?: string; address?: string; map?: string } = {};
@@ -241,29 +271,30 @@ export function CreateEventForm({
   }
   const sessionsInvalid = sessions.some((s, i) => Object.keys(getSessionFieldErrors(s, i)).length > 0);
 
-  // Blank rows are ignored (buildPayload drops them); a row with anything filled in must be complete.
+  // Every ticket row must be complete — an added-but-empty row blocks the step until it is filled in or removed.
   function getTicketFieldErrors(t: DraftTicketType): { name?: string; price?: string; qty?: string } {
-    if (!t.name.trim() && !t.price.trim() && !t.qty.trim()) return {};
     const e: { name?: string; price?: string; qty?: string } = {};
-    if (!t.name.trim()) e.name = "name";
-    const price = Number(t.price);
-    if (!t.price.trim() || !Number.isFinite(price) || price < 0) e.price = "price (0 or more)";
-    const qty = Number(t.qty);
-    if (!t.qty.trim() || !Number.isInteger(qty) || qty < 1) e.qty = "quantity (a whole number, 1 or more)";
+    if (!t.name.trim()) e.name = "Ticket name is required.";
+    // Greater than 0, no leading zeros ("05", "007"); "0.50" is fine. 0 is a real value, just not an allowed one.
+    if (!/^(0|[1-9]\d*)(\.\d{1,2})?$/.test(t.price.trim()) || !(Number(t.price) > 0)) e.price = "Price must be above 0, e.g. 25 or 25.50.";
+    if (!/^[1-9]\d*$/.test(t.qty.trim())) e.qty = "Quantity must be a whole number above 0, e.g. 100.";
     return e;
   }
 
   const sessionHasTicket = (sessionId: string) => ticketTypes.some((t) => t.sessionId === sessionId && t.name.trim());
 
   function getTicketsError(): string | null {
-    if (ticketTypes.some((t) => Object.keys(getTicketFieldErrors(t)).length > 0)) {
-      return "Complete or remove the highlighted ticket types.";
+    const invalid = ticketTypes.filter((t) => Object.keys(getTicketFieldErrors(t)).length > 0);
+    if (invalid.length) {
+      // The last ticket type in a session can't be removed, so only offer "remove" when one can be.
+      const removable = invalid.some((t) => ticketTypes.filter((x) => x.sessionId === t.sessionId).length > 1);
+      return removable ? "Fill in or remove the highlighted ticket types." : "Fill in the highlighted ticket type.";
     }
     // The API rejects any session without ticket types ("sessions.N.ticket_types: List should have at least 1 item").
     const empty = sessions.map((s, i) => (sessionHasTicket(s.id) ? -1 : i)).filter((i) => i >= 0);
     if (empty.length) {
       return empty.length === 1 && sessions.length === 1
-        ? "Add at least one ticket type with a name, price, and quantity."
+        ? "Add at least one ticket type."
         : `Add at least one ticket type to ${empty.map((i) => `Session ${i + 1}`).join(", ")}.`;
     }
     return null;
@@ -271,11 +302,12 @@ export function CreateEventForm({
   // Live, so the message disappears as soon as the problem is fixed.
   const ticketsError = showErrors[3] ? getTicketsError() : null;
 
-  // Submit-time check: also expands sessions that are missing ticket types so the problem is visible.
+  // Submit-time check: also expands sessions with missing or incomplete ticket types so the problem is visible.
   function validateTickets(): boolean {
     markShown(3);
     if (!getTicketsError()) return true;
-    setExpandedSess((e) => Array.from(new Set([...e, ...sessions.filter((s) => !sessionHasTicket(s.id)).map((s) => s.id)])));
+    const hasBadRow = (id: string) => ticketTypes.some((t) => t.sessionId === id && Object.keys(getTicketFieldErrors(t)).length > 0);
+    setExpandedSess((e) => Array.from(new Set([...e, ...sessions.filter((s) => !sessionHasTicket(s.id) || hasBadRow(s.id)).map((s) => s.id)])));
     return false;
   }
 
@@ -295,7 +327,7 @@ export function CreateEventForm({
       end_time: first?.endTime || null,
       ticket_types:
         !isMultiSession && validTickets.length
-          ? JSON.stringify(validTickets.map((t) => ({ name: t.name.trim(), price: t.price, quantity: Number(t.qty) || 0 })))
+          ? JSON.stringify(validTickets.map((t) => ({ name: t.name.trim(), price: t.price, quantity: Number(t.qty) })))
           : null,
       sessions: isMultiSession
         ? JSON.stringify(
@@ -305,7 +337,7 @@ export function CreateEventForm({
               end_time: s.endTime,
               ticket_types: ticketTypes
                 .filter((t) => t.sessionId === s.id && t.name.trim())
-                .map((t) => ({ name: t.name.trim(), price: t.price, quantity: Number(t.qty) || 0 })),
+                .map((t) => ({ name: t.name.trim(), price: t.price, quantity: Number(t.qty) })),
             })),
           )
         : null,
@@ -801,8 +833,10 @@ export function CreateEventForm({
                                 ))}
                               </div>
                               {sessTickets.map((tt) => {
-                                const te = showErrors[3] ? getTicketFieldErrors(tt) : {};
-                                const missing = [te.name, te.price, te.qty].filter(Boolean);
+                                const all = getTicketFieldErrors(tt);
+                                const shown = (k: "name" | "price" | "qty") => (showErrors[3] || touchedTickets[`${tt.id}:${k}`] ? all[k] : undefined);
+                                const te = { name: shown("name"), price: shown("price"), qty: shown("qty") };
+                                const flagged = flaggedTickets.includes(tt.id);
                                 const bad = (k: boolean) => (k ? " border-red-400!" : "");
                                 return (
                                 <div key={tt.id}>
@@ -810,40 +844,43 @@ export function CreateEventForm({
                                   <input
                                     value={tt.name}
                                     onChange={(e) => updateTicketType(tt.id, "name", e.target.value)}
+                                    onBlur={() => touchTicket(tt.id, "name")}
                                     placeholder="e.g. General Admission"
-                                    className={"col-span-2 sm:col-span-1 bg-background border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground" + bad(!!te.name)}
+                                    className={"col-span-2 sm:col-span-1 bg-background border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground" + bad(!!te.name || (flagged && !!all.name))}
                                   />
                                   <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs pointer-events-none">$</span>
                                     <input
                                       value={tt.price}
                                       onChange={(e) => updateTicketType(tt.id, "price", e.target.value)}
+                                      onBlur={() => touchTicket(tt.id, "price")}
                                       placeholder="0"
-                                      className={"w-full bg-background border border-border rounded-lg pl-6 pr-3 py-2 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground" + bad(!!te.price)}
+                                      className={"w-full bg-background border border-border rounded-lg pl-6 pr-3 py-2 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground" + bad(!!te.price || (flagged && !!all.price))}
                                     />
                                   </div>
                                   <input
                                     value={tt.qty}
                                     onChange={(e) => updateTicketType(tt.id, "qty", e.target.value)}
+                                    onBlur={() => touchTicket(tt.id, "qty")}
                                     placeholder="100"
-                                    className={"w-full bg-background border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground" + bad(!!te.qty)}
+                                    className={"w-full bg-background border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground" + bad(!!te.qty || (flagged && !!all.qty))}
                                   />
                                   <button
                                     onClick={() => removeTicketType(tt.id)}
-                                    className="text-muted-foreground hover:text-red-500 transition-colors flex items-center justify-center"
+                                    disabled={sessTickets.length <= 1}
+                                    title={sessTickets.length <= 1 ? "Each session needs at least one ticket type" : undefined}
+                                    className="text-muted-foreground hover:text-red-500 transition-colors flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-muted-foreground"
                                     aria-label="Remove ticket type"
                                   >
                                     <X size={13} />
                                   </button>
                                 </div>
-                                {missing.length > 0 && <p className="text-[11px] text-red-600 mt-1">Enter a valid {missing.join(", ")}.</p>}
+                                {/* One message at a time, in field order: name, then price, then quantity. */}
+                                {(te.name ?? te.price ?? te.qty) && <p className="text-[11px] text-red-600 mt-1">{te.name ?? te.price ?? te.qty}</p>}
                                 </div>
                                 );
                               })}
                             </div>
-                          )}
-                          {showErrors[3] && !sessionHasTicket(s.id) && (
-                            <p className="px-5 pt-4 text-[11px] text-red-600">Add at least one ticket type with a name, price, and quantity.</p>
                           )}
                           <div className="px-5 py-4">
                             <button onClick={() => addTicketType(s.id)} className="flex items-center gap-1.5 text-xs text-primary font-semibold hover:underline transition-colors">
@@ -857,7 +894,7 @@ export function CreateEventForm({
                 })}
               </div>
 
-              {(ticketsError ?? error) && <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-4 py-3">{ticketsError ?? error}</div>}
+              {(ticketAddError ?? ticketsError ?? error) && <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-4 py-3">{ticketAddError ?? ticketsError ?? error}</div>}
 
               <div className="flex items-center justify-between gap-3 pt-1">
                 <div className="flex items-center gap-2">

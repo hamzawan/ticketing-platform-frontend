@@ -24,6 +24,9 @@ import {
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=900&h=400&fit=crop&auto=format";
 
+// The API rejects a session with no ticket types, so the last one can't be removed.
+const LAST_TYPE_HINT = "Each session needs at least one ticket type";
+
 type PanelSession = {
   id: string;
   date: string;
@@ -190,7 +193,7 @@ function TicketTypesTable({
                       <button type="button" aria-label={`Edit ${tt.name}`} onClick={() => onEditType(tt)} className="p-1.5 -m-1 text-muted-foreground hover:text-foreground">
                         <Edit2 size={13} />
                       </button>
-                      <button type="button" aria-label={`Delete ${tt.name}`} onClick={() => onDeleteType(tt)} className="p-1.5 -m-1 text-muted-foreground hover:text-red-500">
+                      <button type="button" aria-label={`Delete ${tt.name}`} onClick={() => onDeleteType(tt)} disabled={ticketTypes.length <= 1} title={ticketTypes.length <= 1 ? LAST_TYPE_HINT : undefined} className="p-1.5 -m-1 text-muted-foreground hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-muted-foreground">
                         <Trash2 size={13} />
                       </button>
                     </>
@@ -262,7 +265,9 @@ function TicketTypesTable({
                           type="button"
                           aria-label={`Delete ${tt.name}`}
                           onClick={() => onDeleteType(tt)}
-                          className="text-muted-foreground hover:text-red-500 transition-colors"
+                          disabled={ticketTypes.length <= 1}
+                          title={ticketTypes.length <= 1 ? LAST_TYPE_HINT : undefined}
+                          className="text-muted-foreground hover:text-red-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-muted-foreground"
                         >
                           <Trash2 size={11} />
                         </button>
