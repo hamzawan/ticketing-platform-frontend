@@ -670,6 +670,8 @@ export type RefundRequestItem = {
   session_date: string;
   customer_name: string;
   customer_email: string;
+  // The customer's stated reason for the refund; optional on their side.
+  customer_note?: string | null;
   quantity: number;
   amount: string;
   refunded_amount: string;

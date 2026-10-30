@@ -14,9 +14,7 @@ import {
 
 type LocalStatus = "completed" | "rejected";
 
-// The refund-requests API doesn't return a customer-supplied reason yet —
-// shown as static placeholder text so the column matches Figma until that
-// field exists; swap for `request.reason` once the API adds it.
+// Shown when the customer left no note with their refund request.
 const REASON_PLACEHOLDER = "No reason provided";
 
 export function RefundsTable({
@@ -89,8 +87,10 @@ export function RefundsTable({
                 <td className="px-5 py-4 text-xs text-muted-foreground max-w-36 truncate" title={request.event_name}>
                   {request.event_name}
                 </td>
-                <td className="px-5 py-4 text-xs text-muted-foreground max-w-40 truncate" title={REASON_PLACEHOLDER}>
-                  {REASON_PLACEHOLDER}
+                <td className="px-5 py-4 text-xs text-muted-foreground max-w-48">
+                  <span className="line-clamp-2 break-words" title={request.customer_note?.trim() || undefined}>
+                    {request.customer_note?.trim() || REASON_PLACEHOLDER}
+                  </span>
                 </td>
                 <td className="px-5 py-4 text-xs font-semibold text-center">{request.quantity}</td>
                 <td className="px-5 py-4 text-xs font-bold">{formatMoney(request.amount)}</td>
