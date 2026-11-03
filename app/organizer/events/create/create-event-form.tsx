@@ -172,6 +172,7 @@ export function CreateEventForm({
     setSessionError(lastError);
     if (lastError) {
       markShown(2);
+      scrollToFirstError();
       return;
     }
     markShown(2, false);
@@ -246,6 +247,15 @@ export function CreateEventForm({
   const [touchedTickets, setTouchedTickets] = useState<Record<string, boolean>>({});
   const touchTicket = (id: string, key: string) => setTouchedTickets((p) => (p[`${id}:${key}`] ? p : { ...p, [`${id}:${key}`]: true }));
   const markShown = (step: number, on = true) => setShowErrors((p) => ({ ...p, [step]: on }));
+  // Once the errors have rendered, bring the first one into view (and focus it if it's an input).
+  function scrollToFirstError() {
+    setTimeout(() => {
+      const el = document.querySelector<HTMLElement>('[class*="border-red-400"], [data-form-error]');
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (el.matches("input, textarea, button")) el.focus({ preventScroll: true });
+    }, 50);
+  }
 
   const infoErrors: { name?: string; venue?: string; minAge?: string; maxAge?: string; address?: string; map?: string } = {};
   if (!form.name.trim()) infoErrors.name = "Event name is required.";
@@ -306,6 +316,7 @@ export function CreateEventForm({
   function validateTickets(): boolean {
     markShown(3);
     if (!getTicketsError()) return true;
+    scrollToFirstError();
     const hasBadRow = (id: string) => ticketTypes.some((t) => t.sessionId === id && Object.keys(getTicketFieldErrors(t)).length > 0);
     setExpandedSess((e) => Array.from(new Set([...e, ...sessions.filter((s) => !sessionHasTicket(s.id) || hasBadRow(s.id)).map((s) => s.id)])));
     return false;
@@ -683,7 +694,10 @@ export function CreateEventForm({
                 <button
                   onClick={() => {
                     markShown(1);
-                    if (Object.keys(infoErrors).length > 0) return;
+                    if (Object.keys(infoErrors).length > 0) {
+                      scrollToFirstError();
+                      return;
+                    }
                     setStep(2);
                   }}
                   className="flex items-center gap-2 bg-primary text-white font-semibold px-6 py-2.5 rounded-xl hover:bg-primary/90 transition-colors text-sm ml-auto"
@@ -742,7 +756,7 @@ export function CreateEventForm({
                   );
                 })}
               </div>
-              {sessionError && <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-4 py-3">{sessionError}</div>}
+              {sessionError && <div data-form-error className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-4 py-3">{sessionError}</div>}
               <button
                 onClick={addSession}
                 className="w-full flex items-center justify-center gap-2 border border-dashed border-border rounded-2xl py-4 text-sm text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
@@ -770,7 +784,10 @@ export function CreateEventForm({
                 <button
                   onClick={() => {
                     markShown(2);
-                    if (sessionsInvalid) return;
+                    if (sessionsInvalid) {
+                      scrollToFirstError();
+                      return;
+                    }
                     sessions.forEach((s) => {
                       if (!ticketTypes.some((t) => t.sessionId === s.id)) addTicketType(s.id);
                     });
@@ -895,7 +912,7 @@ export function CreateEventForm({
                 })}
               </div>
 
-              {(ticketAddError ?? ticketsError ?? error) && <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-4 py-3">{ticketAddError ?? ticketsError ?? error}</div>}
+              {(ticketAddError ?? ticketsError ?? error) && <div data-form-error className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-4 py-3">{ticketAddError ?? ticketsError ?? error}</div>}
 
               <div className="flex items-center justify-between gap-3 pt-1">
                 <div className="flex items-center gap-2">
