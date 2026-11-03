@@ -32,6 +32,22 @@ function getToken(): string | null {
   return typeof window !== "undefined" ? window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) : null;
 }
 
+const LOCAL_DT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+
+// The event's overall window as datetime-local strings: earliest session start to latest session end.
+function getEventRange(ev: OrganizerEvent | null): { min: string; max: string } | null {
+  if (!ev) return null;
+  const at = (date: string | null, time: string | null) => `${date ?? ""}T${(time ?? "").slice(0, 5)}`;
+  const sessions = getSessions(ev);
+  const starts = sessions.map((s) => at(s.date, s.startTime)).filter((v) => LOCAL_DT.test(v)).sort();
+  const ends = sessions.map((s) => at(s.date, s.endTime)).filter((v) => LOCAL_DT.test(v)).sort();
+  if (!starts.length || !ends.length || ends[ends.length - 1] <= starts[0]) return null;
+  return { min: starts[0], max: ends[ends.length - 1] };
+}
+
+const fmtRangeEnd = (v: string) =>
+  new Date(v).toLocaleString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
+
 function getDiscountUses(d: DiscountItem): number {
   return d.used_count ?? d.uses ?? 0;
 }
@@ -120,13 +136,31 @@ export default function DiscountsPage() {
     if (!id) return;
     setLoadingDetail(true);
     getEvent(id, getToken())
-      .then((ev) => setEventDetail(ev))
+      .then((ev) => {
+        setEventDetail(ev);
+        // Default the window to the event's own dates; both stay editable.
+        const range = getEventRange(ev);
+        setStartAt(range?.min ?? "");
+        setEndAt(range?.max ?? "");
+      })
       .catch((err) => setFormError(err instanceof ApiError ? err.message : "Couldn't load this event's sessions."))
       .finally(() => setLoadingDetail(false));
   }
 
   // Discounts can only be created for events that are on sale (API sends "on_sale").
   const onSaleEvents = useMemo(() => events.filter((e) => e.status.replace(/_/g, "-") === "on-sale"), [events]);
+
+  const eventRange = useMemo(() => getEventRange(eventDetail), [eventDetail]);
+
+  // Moving the start past the end pushes the end out to the event's end (or clears it if there's no room).
+  // Typed-in values are clamped into the allowed window, so nothing outside the event's dates can stick.
+  const clamp = (v: string, lo?: string, hi?: string) => (!v ? v : lo && v < lo ? lo : hi && v > hi ? hi : v);
+
+  function handleStartChange(raw: string) {
+    const v = clamp(raw, eventRange?.min, eventRange?.max);
+    setStartAt(v);
+    if (v && endAt && endAt <= v) setEndAt(eventRange && eventRange.max > v ? eventRange.max : "");
+  }
 
   const sessions = useMemo(() => (eventDetail ? getSessions(eventDetail).filter((s) => s.persisted) : []), [eventDetail]);
   const ticketTypes = sessions.find((s) => s.id === sessionId)?.ticketTypes ?? [];
@@ -180,6 +214,11 @@ export default function DiscountsPage() {
     const end = new Date(endAt);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return setFormError("Enter valid start and end dates.");
     if (end <= start) return setFormError("End date/time must be after the start date/time.");
+    if (eventRange) {
+      if (startAt < eventRange.min || startAt > eventRange.max || endAt < eventRange.min || endAt > eventRange.max) {
+        return setFormError("Start and end must fall within the event's dates and times.");
+      }
+    }
 
     setSaving(true);
     setFormError(null);
@@ -296,11 +335,30 @@ export default function DiscountsPage() {
             </div>
             <div>
               <label className={LABEL_CLASS}>Start Date &amp; Time</label>
-              <input type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} className={INPUT_CLASS} />
+              <input
+                type="datetime-local"
+                value={startAt}
+                min={eventRange?.min}
+                max={eventRange?.max}
+                onChange={(e) => handleStartChange(e.target.value)}
+                className={INPUT_CLASS}
+              />
             </div>
             <div>
               <label className={LABEL_CLASS}>End Date &amp; Time</label>
-              <input type="datetime-local" value={endAt} onChange={(e) => setEndAt(e.target.value)} className={INPUT_CLASS} />
+              <input
+                type="datetime-local"
+                value={endAt}
+                min={startAt || eventRange?.min}
+                max={eventRange?.max}
+                onChange={(e) => setEndAt(clamp(e.target.value, startAt || eventRange?.min, eventRange?.max))}
+                className={INPUT_CLASS}
+              />
+              {eventRange && (
+                <p className="text-[11px] text-muted-foreground mt-1.5">
+                  Event runs {fmtRangeEnd(eventRange.min)} – {fmtRangeEnd(eventRange.max)}
+                </p>
+              )}
             </div>
           </div>
           {formError && (
