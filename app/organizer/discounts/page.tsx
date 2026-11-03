@@ -372,7 +372,7 @@ export default function DiscountsPage() {
                 return (
                   <tr key={d.id} className="hover:bg-secondary/40">
                     <td className="p-4 font-mono text-sm font-bold">{d.code}</td>
-                    <td className="p-4 text-xs font-semibold text-accent whitespace-nowrap">
+                    <td className="p-4 text-xs font-semibold text-muted-foreground whitespace-nowrap">
                       {d.discount_type === "percentage" ? `${Number(d.value)}% off` : `$${Number(d.value)} off`}
                     </td>
                     <td className="p-4 text-xs text-muted-foreground">{d.event_name ?? "—"}</td>
