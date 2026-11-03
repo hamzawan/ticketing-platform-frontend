@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Ticket, X } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { TicketCard } from "@/components/organizer/ticket-card";
+import { Select } from "@/components/ui/select";
 import { ACCESS_TOKEN_STORAGE_KEY, formatDate, getTickets, type TicketFilters, type TicketItem } from "@/lib/api";
 
 function getStoredToken(): string | null {
@@ -70,6 +71,11 @@ function TicketDialog({ ticket, onClose }: { ticket: TicketItem; onClose: () => 
 
 export default function TicketsPage() {
   const [tickets, setTickets] = useState<TicketItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [moreError, setMoreError] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
   const [loadStatus, setLoadStatus] = useState<"loading" | "ready" | "error">("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [filters, setFilters] = useState<TicketFilters>({});
@@ -79,31 +85,64 @@ export default function TicketsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    getTickets(filters, getStoredToken())
-      .then((items) => {
+    getTickets(filters, page, getStoredToken())
+      .then((res) => {
         if (cancelled) return;
-        setTickets(items);
+        // Later pages are appended to what's already on screen.
+        setTickets((prev) => {
+          if (page === 1) return res.results;
+          const seen = new Set(prev.map((t) => t.id));
+          return [...prev, ...res.results.filter((t) => !seen.has(t.id))];
+        });
+        setTotal(res.total);
         setLoadStatus("ready");
+        setLoadingMore(false);
       })
       .catch((err) => {
         if (cancelled) return;
+        if (page > 1) {
+          setMoreError(true);
+          setLoadingMore(false);
+          return;
+        }
         setErrorMessage(err instanceof Error ? err.message : "Unknown error");
         setLoadStatus("error");
       });
     return () => {
       cancelled = true;
     };
-  }, [filters, reloadKey]);
+  }, [filters, page, reloadKey]);
+
+  const hasMore = tickets.length < total;
+
+  // Load the next page when the end of the list scrolls into view.
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore || loadStatus !== "ready" || loadingMore || moreError) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0].isIntersecting) return;
+        setLoadingMore(true);
+        setPage((p) => p + 1);
+      },
+      { rootMargin: "300px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, loadStatus, loadingMore, moreError, tickets.length]);
 
   const openTicket = useCallback((t: TicketItem) => setSelected(t), []);
   const closeTicket = useCallback(() => setSelected(null), []);
 
-  const hasFilters = Boolean(filters.customer_email || filters.date_from || filters.date_to);
+  const hasFilters = Boolean(filters.customer_email || filters.date_from || filters.date_to || filters.status);
 
   function applyFilters(e: React.FormEvent) {
     e.preventDefault();
     setLoadStatus("loading");
+    setMoreError(false);
+    setPage(1);
     setFilters({
+      status: draft.status || undefined,
       customer_email: draft.customer_email?.trim() || undefined,
       date_from: draft.date_from || undefined,
       date_to: draft.date_to || undefined,
@@ -112,6 +151,8 @@ export default function TicketsPage() {
 
   function clearFilters() {
     setDraft({});
+    setPage(1);
+    setMoreError(false);
     setLoadStatus("loading");
     setFilters({});
   }
@@ -142,6 +183,19 @@ export default function TicketsPage() {
           onChange={(e) => setDraft((d) => ({ ...d, date_to: e.target.value }))}
           aria-label="To date"
           className={INPUT_CLASS}
+        />
+        <Select
+          className="w-full sm:w-44"
+          value={draft.status ?? ""}
+          onChange={(v) => setDraft((d) => ({ ...d, status: v }))}
+          placeholder="All status"
+          ariaLabel="Filter by status"
+          options={[
+            { value: "", label: "All status" },
+            { value: "issued", label: "Issued" },
+            { value: "entered", label: "Entered" },
+            { value: "refunded", label: "Refunded" },
+          ]}
         />
         <button type="submit" className="rounded-xl bg-primary text-white text-sm font-medium px-4 py-2">
           Apply
@@ -177,11 +231,30 @@ export default function TicketsPage() {
       )}
 
       {loadStatus === "ready" && tickets.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-          {tickets.map((t) => (
-            <TicketCard key={t.id} ticket={t} onCheck={openTicket} />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            {tickets.map((t) => (
+              <TicketCard key={t.id} ticket={t} onCheck={openTicket} />
+            ))}
+          </div>
+          <div ref={sentinelRef} className="h-px" />
+          {loadingMore && <p className="py-4 text-center text-xs text-muted-foreground">Loading more tickets…</p>}
+          {moreError && (
+            <p className="py-4 text-center text-xs text-red-600">
+              Couldn&apos;t load more tickets.{" "}
+              <button
+                onClick={() => {
+                  setMoreError(false);
+                  setLoadingMore(true);
+                  setReloadKey((k) => k + 1);
+                }}
+                className="font-semibold underline"
+              >
+                Retry
+              </button>
+            </p>
+          )}
+        </>
       )}
 
       {selected && <TicketDialog ticket={selected} onClose={closeTicket} />}

@@ -931,10 +931,16 @@ export type TicketFilters = {
   customer_email?: string;
   date_from?: string;
   date_to?: string;
+  status?: string;
 };
 
-export async function getTickets(filters: TicketFilters = {}, token?: string | null): Promise<TicketItem[]> {
-  const params = new URLSearchParams();
+export const TICKETS_PAGE_SIZE = 12;
+
+export type TicketsPage = { results: TicketItem[]; total: number; page: number; page_size: number };
+
+export async function getTickets(filters: TicketFilters = {}, page = 1, token?: string | null): Promise<TicketsPage> {
+  const params = new URLSearchParams({ page: String(page), page_size: String(TICKETS_PAGE_SIZE) });
+  if (filters.status) params.set("status", filters.status);
   if (filters.customer_email) params.set("customer_email", filters.customer_email);
   if (filters.date_from) params.set("date_from", filters.date_from);
   if (filters.date_to) params.set("date_to", filters.date_to);
@@ -953,10 +959,19 @@ export async function getTickets(filters: TicketFilters = {}, token?: string | n
   }
 
   // The response shape isn't documented beyond the item fields: accept a bare
-  // array or a paginated { results: [...] } wrapper.
-  const data: unknown = await res.json();
-  const items = Array.isArray(data) ? data : (data as { results?: unknown } | null)?.results;
-  return Array.isArray(items) ? (items as TicketItem[]) : [];
+  // array or a paginated { results, total, page_size } wrapper. When the server
+  // didn't paginate/filter for us, do it here.
+  const data = (await res.json()) as unknown;
+  const wrapper = Array.isArray(data) ? null : (data as Partial<TicketsPage> | null);
+  const items = (Array.isArray(data) ? data : wrapper?.results) as TicketItem[] | undefined;
+  const all = Array.isArray(items) ? items : [];
+  if (wrapper && typeof wrapper.total === "number" && typeof wrapper.page_size === "number") {
+    return { results: all, total: wrapper.total, page, page_size: wrapper.page_size };
+  }
+  const wanted = filters.status?.toLowerCase();
+  const matching = wanted ? all.filter((t) => (t.status ?? "").toLowerCase() === wanted) : all;
+  const start = (page - 1) * TICKETS_PAGE_SIZE;
+  return { results: matching.slice(start, start + TICKETS_PAGE_SIZE), total: matching.length, page, page_size: TICKETS_PAGE_SIZE };
 }
 
 // `qr_code` isn't guaranteed to be a ready-to-use <img> src. Accept a data
