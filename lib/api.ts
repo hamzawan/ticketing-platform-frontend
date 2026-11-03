@@ -1051,6 +1051,20 @@ export async function createAddOn(eventId: string, payload: AddOnPayload, token?
   return res.json() as Promise<AddOnItem>;
 }
 
+export async function deleteAddOn(addOnId: string, token?: string | null): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/add-ons/${addOnId}/delete/`, {
+    method: "DELETE",
+    headers: {
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!res.ok) {
+    throw new ApiError(await readErrorDetail(res, "Failed to delete add-on. Please try again."), res.status);
+  }
+}
+
 export async function updateAddOn(addOnId: string, payload: AddOnPayload, token?: string | null): Promise<AddOnItem> {
   const res = await fetch(`${API_BASE_URL}/api/v1/organizer/add-ons/${addOnId}/update/`, {
     method: "PUT",

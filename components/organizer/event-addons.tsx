@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Edit2, ImagePlus, Plus, X } from "lucide-react";
+import { Edit2, ImagePlus, Plus, Trash2, X } from "lucide-react";
 import {
   ACCESS_TOKEN_STORAGE_KEY,
   ApiError,
   createAddOn,
+  deleteAddOn,
   formatMoney,
   getAddOns,
   resolveMediaUrl,
@@ -159,6 +160,9 @@ export function EventAddOns({ eventId, editable, onToast }: { eventId: string; e
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<AddOnItem | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -198,6 +202,30 @@ export function EventAddOns({ eventId, editable, onToast }: { eventId: string; e
       setSaveError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  function closeDelete() {
+    if (deleteBusy) return;
+    setDeleting(null);
+    setDeleteError(null);
+  }
+
+  async function handleDelete() {
+    if (!deleting) return;
+    setDeleteBusy(true);
+    setDeleteError(null);
+    try {
+      await deleteAddOn(deleting.id, getToken());
+      onToast({ type: "success", message: `Add-on "${deleting.name}" deleted.` });
+      // Step back a page if that was the last item on this one.
+      if (data && data.results.length === 1 && page > 1) setPage(page - 1);
+      setDeleting(null);
+      setReloadKey((k) => k + 1);
+    } catch (err) {
+      setDeleteError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setDeleteBusy(false);
     }
   }
 
@@ -290,6 +318,15 @@ export function EventAddOns({ eventId, editable, onToast }: { eventId: string; e
                         >
                           <Edit2 size={13} />
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleting(a)}
+                          aria-label={`Delete ${a.name}`}
+                          title="Delete"
+                          className="w-8 h-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-colors"
+                        >
+                          <Trash2 size={13} />
+                        </button>
                       </div>
                     )}
                   </li>
@@ -299,6 +336,46 @@ export function EventAddOns({ eventId, editable, onToast }: { eventId: string; e
             {data.total > data.page_size && <Pagination page={data.page} pageSize={data.page_size} total={data.total} onChange={setPage} />}
           </>
         )
+      )}
+
+      {deleting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={closeDelete}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Delete add-on"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-card border border-border rounded-2xl shadow-xl"
+          >
+            <div className="px-5 py-4 border-b border-border">
+              <h3 className="text-sm font-bold font-(family-name:--font-display)">Delete Add-on</h3>
+            </div>
+            <div className="px-5 py-4 space-y-4 text-sm text-muted-foreground">
+              <p>
+                Are you sure you want to delete <span className="font-semibold text-foreground break-words">{deleting.name}</span>? This can&apos;t be undone.
+              </p>
+              {deleteError && <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-3 py-2.5">{deleteError}</div>}
+            </div>
+            <div className="flex justify-end gap-2 px-5 py-4 border-t border-border">
+              <button
+                type="button"
+                onClick={closeDelete}
+                disabled={deleteBusy}
+                className="text-xs font-semibold px-4 py-2 rounded-lg border border-border hover:bg-secondary transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleteBusy}
+                className="text-xs font-semibold px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-60"
+              >
+                {deleteBusy ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {modal && <AddOnFormModal addOn={modal.addOn} saving={saving} error={saveError} onClose={closeModal} onSave={handleSave} />}
