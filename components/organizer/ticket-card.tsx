@@ -35,7 +35,7 @@ export const TicketCard = memo(function TicketCard({
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={qrSrc}
-            alt={`QR code for ticket ${ticket.ticket_code}`}
+            alt={`QR code for ticket ${ticket.id}`}
             loading="lazy"
             decoding="async"
             className="w-full h-full object-contain [image-rendering:pixelated]"
@@ -48,7 +48,6 @@ export const TicketCard = memo(function TicketCard({
       </div>
 
       <div className="space-y-3">
-        <Field label="Ticket Code:" value={ticket.ticket_code} />
         <div>
           <div className="text-xs font-bold">Status:</div>
           <span

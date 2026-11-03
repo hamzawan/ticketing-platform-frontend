@@ -33,7 +33,6 @@ function TicketDialog({ ticket, onClose }: { ticket: TicketItem; onClose: () => 
   }, [onClose]);
 
   const rows: [string, string][] = [
-    ["Ticket code", ticket.ticket_code],
     ["Status", ticket.status],
     ["Ticket ID", ticket.id],
     ["Booking ID", ticket.booking_id],
