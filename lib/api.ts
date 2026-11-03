@@ -916,6 +916,63 @@ export async function deleteDiscount(discountId: string, token?: string | null):
   }
 }
 
+export type TicketItem = {
+  id: string;
+  booking_id: string;
+  ticket_code: string;
+  status: string;
+  // Image URL, server-relative path, data URI or raw base64 — see resolveQrSrc().
+  qr_code: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TicketFilters = {
+  customer_email?: string;
+  date_from?: string;
+  date_to?: string;
+};
+
+export async function getTickets(filters: TicketFilters = {}, token?: string | null): Promise<TicketItem[]> {
+  const params = new URLSearchParams();
+  if (filters.customer_email) params.set("customer_email", filters.customer_email);
+  if (filters.date_from) params.set("date_from", filters.date_from);
+  if (filters.date_to) params.set("date_to", filters.date_to);
+
+  const query = params.toString();
+  const res = await fetch(`${API_BASE_URL}/api/v1/tickets/all/${query ? `?${query}` : ""}`, {
+    cache: "no-store",
+    headers: {
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!res.ok) {
+    throw new ApiError(await readErrorDetail(res, "Failed to load tickets."), res.status);
+  }
+
+  // The response shape isn't documented beyond the item fields: accept a bare
+  // array or a paginated { results: [...] } wrapper.
+  const data: unknown = await res.json();
+  const items = Array.isArray(data) ? data : (data as { results?: unknown } | null)?.results;
+  return Array.isArray(items) ? (items as TicketItem[]) : [];
+}
+
+// `qr_code` isn't guaranteed to be a ready-to-use <img> src. Accept a data
+// URI, an absolute/server-relative URL, or raw base64 image bytes.
+export function resolveQrSrc(qr: string | null | undefined): string | null {
+  if (!qr || typeof qr !== "string") return null;
+  const value = qr.trim();
+  if (!value) return null;
+  if (value.startsWith("data:") || /^(https?:)?\/\//i.test(value) || value.startsWith("/")) return resolveMediaUrl(value);
+  if (/^[A-Za-z0-9+/=\s]{64,}$/.test(value)) {
+    const mime = value.startsWith("PHN2Zy") || value.startsWith("PD94bWw") ? "image/svg+xml" : "image/png";
+    return `data:${mime};base64,${value.replace(/\s/g, "")}`;
+  }
+  return resolveMediaUrl(value);
+}
+
 export type AddOnItem = {
   id: string;
   event_id: string;

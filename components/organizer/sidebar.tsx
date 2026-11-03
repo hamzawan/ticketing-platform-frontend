@@ -9,6 +9,7 @@ import {
   Plus,
   RefreshCw,
   Percent,
+  Ticket,
   BookOpen,
   LogOut,
   Menu,
@@ -22,6 +23,7 @@ const NAV_ITEMS = [
   { href: "/organizer/events", label: "My Events", Icon: Calendar },
   { href: "/organizer/events/create", label: "Create Event", Icon: Plus },
   { href: "/organizer/bookings", label: "Bookings", Icon: BookOpen },
+  { href: "/organizer/tickets", label: "Tickets", Icon: Ticket },
   { href: "/organizer/refunds", label: "Refunds", Icon: RefreshCw },
   { href: "/organizer/discounts", label: "Discounts", Icon: Percent },
 ];
