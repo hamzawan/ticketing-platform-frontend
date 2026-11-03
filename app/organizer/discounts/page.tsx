@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle, Copy, ListFilter, Plus, Trash2, X, XCircle } from "lucide-react";
+import { CheckCircle, Copy, FunnelX, Plus, Trash2, X, XCircle } from "lucide-react";
 import {
   ACCESS_TOKEN_STORAGE_KEY,
   ApiError,
@@ -323,9 +323,20 @@ export default function DiscountsPage() {
         </div>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-card border border-border text-muted-foreground flex-shrink-0">
-          <ListFilter size={15} />
-        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setFilterEventId("");
+            setFilterStatus("");
+            setPage(1);
+          }}
+          disabled={!filterEventId && !filterStatus}
+          aria-label="Clear filters"
+          title="Clear filters"
+          className="flex items-center justify-center w-10 h-10 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex-shrink-0 disabled:opacity-40 disabled:pointer-events-none"
+        >
+          <FunnelX size={15} />
+        </button>
         <Select
           className="w-full sm:w-64"
           value={filterEventId}
