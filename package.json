@@ -11,6 +11,7 @@
   "dependencies": {
     "@tiptap/extension-placeholder": "^3.31.3",
     "@tiptap/extension-underline": "^3.31.3",
+    "@tiptap/extensions": "^3.31.3",
     "@tiptap/react": "^3.31.3",
     "@tiptap/starter-kit": "^3.31.3",
     "lucide-react": "^1.47.0",

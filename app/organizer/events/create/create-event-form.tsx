@@ -557,6 +557,7 @@ export function CreateEventForm({
                     value={form.description}
                     onChange={(html) => setForm((f) => ({ ...f, description: html }))}
                     placeholder="Tell attendees what makes this event special — highlights, age groups, what to bring…"
+                    maxChars={500}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">

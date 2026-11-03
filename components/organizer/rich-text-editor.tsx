@@ -4,6 +4,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import Placeholder from "@tiptap/extension-placeholder";
+import { CharacterCount } from "@tiptap/extensions";
 import { Bold, Heading2, Heading3, Italic, List, ListOrdered, Quote, Underline as UnderlineIcon } from "lucide-react";
 
 function ToolBtn({
@@ -38,13 +39,20 @@ export function RichTextEditor({
   value,
   onChange,
   placeholder,
+  maxChars,
 }: {
   value: string;
   onChange: (html: string) => void;
   placeholder?: string;
+  maxChars?: number;
 }) {
   const editor = useEditor({
-    extensions: [StarterKit, Underline, Placeholder.configure({ placeholder: placeholder ?? "Write something…" })],
+    extensions: [
+      StarterKit,
+      Underline,
+      Placeholder.configure({ placeholder: placeholder ?? "Write something…" }),
+      CharacterCount.configure({ limit: maxChars }),
+    ],
     content: value || "",
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
     editorProps: { attributes: { class: "bba-editor-inner" } },
@@ -96,6 +104,11 @@ export function RichTextEditor({
         </ToolBtn>
       </div>
       <EditorContent editor={editor} className="bba-editor" />
+      {maxChars !== undefined && (
+        <div className="px-3 py-1.5 border-t border-border bg-card text-[11px] text-right text-muted-foreground">
+          {editor.storage.characterCount.characters()}/{maxChars}
+        </div>
+      )}
     </div>
   );
 }
