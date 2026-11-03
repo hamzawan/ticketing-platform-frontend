@@ -670,7 +670,7 @@ export function EventDetailPanel({
     setSaveError(null);
     try {
       const token = typeof window !== "undefined" ? window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) : null;
-      await updateTicketType(event.id, ticket.id, { name: v.name, price: v.price, quantity: v.quantity }, token);
+      await updateTicketType(event.id, ticket.id, { name: v.name, price: Number(v.price), quantity: v.quantity }, token);
       setModal(null);
       setToast({ type: "success", message: `Ticket type "${v.name}" updated.` });
       try {
@@ -738,7 +738,7 @@ export function EventDetailPanel({
           session_date: v.date,
           start_time: v.startTime,
           end_time: v.endTime,
-          ticket_types: [{ name: v.ticket.name, price: v.ticket.price, quantity: v.ticket.quantity }],
+          ticket_types: [{ name: v.ticket.name, price: Number(v.ticket.price), quantity: v.ticket.quantity }],
         },
         token,
       );
@@ -772,7 +772,7 @@ export function EventDetailPanel({
       const token = typeof window !== "undefined" ? window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) : null;
       const created = await createTicketType(
         event.id,
-        { name: v.name, price: v.price, quantity: v.quantity, session_id: sessionId },
+        { name: v.name, price: Number(v.price), quantity: v.quantity, session_id: sessionId },
         token,
       );
       // Merge the returned ticket type into the event so the UI updates
