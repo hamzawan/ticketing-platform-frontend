@@ -49,6 +49,10 @@ export function TimePicker({
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const current = parse(value);
+  // Until all three parts are chosen nothing is reported to the parent, so the
+  // picker keeps the partial choice itself. Each column highlights on its own.
+  const [draft, setDraft] = useState<Partial<Parts>>({});
+  const sel: Partial<Parts> = current ?? draft;
   const min = minTime ? (() => { const p = parse(minTime); return p ? toMinutes(p) : null; })() : null;
   const blocked = (parts: Parts) => min !== null && toMinutes(parts) <= min;
 
@@ -73,9 +77,21 @@ export function TimePicker({
     onChange(format(min !== null && toMinutes(next) <= min ? Math.min(min + 1, 24 * 60 - 1) : toMinutes(next)));
   }
 
-  const base: Parts = current ?? { h: 12, m: 0, p: "AM" };
-  // An hour is disabled when its last minute is still at or before minTime.
-  const hourBlocked = (h: number) => blocked({ h, m: 59, p: base.p });
+  function choose(part: Partial<Parts>) {
+    const next = { ...sel, ...part };
+    if (next.h !== undefined && next.m !== undefined && next.p !== undefined) {
+      setDraft({});
+      pick(next as Parts);
+    } else {
+      setDraft(next);
+    }
+  }
+
+  // Greyed out only when no choice of the still-unpicked parts could be allowed.
+  const hourBlocked = (h: number) =>
+    (sel.p ? [sel.p] : PERIODS).every((p) => blocked({ h, m: 59, p }));
+  const minuteBlocked = (m: number) =>
+    sel.h !== undefined && sel.p !== undefined && blocked({ h: sel.h, m, p: sel.p });
   const periodBlocked = (p: Period) => blocked({ h: 11, m: 59, p });
 
   // Laid out like the browser's own time popup: plain columns, selected value filled in blue.
@@ -91,7 +107,11 @@ export function TimePicker({
         type="button"
         aria-label={ariaLabel}
         aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          // Reopening an empty picker starts from a clean slate.
+          if (!open && !current) setDraft({});
+          setOpen((o) => !o);
+        }}
         className={`w-full flex items-center justify-between gap-2 bg-background border rounded-xl px-4 py-2.5 text-sm text-left outline-none focus:border-primary cursor-pointer ${
           invalid ? "border-red-400" : "border-border"
         }`}
@@ -107,10 +127,10 @@ export function TimePicker({
                 key={h}
                 type="button"
                 role="option"
-                aria-selected={current?.h === h}
+                aria-selected={sel.h === h}
                 disabled={hourBlocked(h)}
-                onClick={() => pick({ ...base, h })}
-                className={item(current?.h === h, hourBlocked(h))}
+                onClick={() => choose({ h })}
+                className={item(sel.h === h, hourBlocked(h))}
               >
                 {pad(h)}
               </button>
@@ -118,16 +138,16 @@ export function TimePicker({
           </div>
           <div role="listbox" aria-label="Minute" className={column}>
             {MINUTES.map((m) => {
-              const disabled = blocked({ ...base, m });
+              const disabled = minuteBlocked(m);
               return (
                 <button
                   key={m}
                   type="button"
                   role="option"
-                  aria-selected={current?.m === m}
+                  aria-selected={sel.m === m}
                   disabled={disabled}
-                  onClick={() => pick({ ...base, m })}
-                  className={item(current?.m === m, disabled)}
+                  onClick={() => choose({ m })}
+                  className={item(sel.m === m, disabled)}
                 >
                   {pad(m)}
                 </button>
@@ -140,10 +160,10 @@ export function TimePicker({
                 key={p}
                 type="button"
                 role="option"
-                aria-selected={current?.p === p}
+                aria-selected={sel.p === p}
                 disabled={periodBlocked(p)}
-                onClick={() => pick({ ...base, p })}
-                className={item(current?.p === p, periodBlocked(p))}
+                onClick={() => choose({ p })}
+                className={item(sel.p === p, periodBlocked(p))}
               >
                 {p}
               </button>
