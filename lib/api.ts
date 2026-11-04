@@ -178,7 +178,10 @@ export async function getDashboard(token?: string | null): Promise<DashboardResp
   });
 
   if (!res.ok) {
-    throw new Error(`Dashboard request failed with status ${res.status}`);
+    throw new ApiError(
+      res.status === 401 ? "Your session has expired." : `Dashboard request failed with status ${res.status}`,
+      res.status,
+    );
   }
 
   return res.json() as Promise<DashboardResponse>;

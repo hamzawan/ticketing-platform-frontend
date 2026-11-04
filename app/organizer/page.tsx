@@ -18,7 +18,7 @@ import {
   isNegativeAmount,
   type DashboardResponse,
 } from "@/lib/api";
-import { myEvents, myOrders } from "@/lib/data";
+import { LoadError } from "@/components/organizer/load-error";
 
 // Revenue/amount/percent are kept as raw strings end-to-end (never routed
 // through Number()) so formatMoney/formatPercent can render arbitrarily
@@ -56,19 +56,6 @@ function toDisplayEvents(dashboard: DashboardResponse): DisplayEvent[] {
   }));
 }
 
-function toMockEvents(source: ReturnType<typeof myEvents>): DisplayEvent[] {
-  return source.map((e) => ({
-    id: e.id,
-    name: e.name,
-    date: e.date,
-    venue: `${e.venue} · ${e.city}`,
-    capacity: e.capacity,
-    sold: e.sold,
-    revenue: String(e.revenue),
-    status: e.status,
-  }));
-}
-
 function toDisplayOrders(dashboard: DashboardResponse): DisplayOrder[] {
   return dashboard.latest_bookings.map((b) => ({
     id: b.id,
@@ -80,21 +67,11 @@ function toDisplayOrders(dashboard: DashboardResponse): DisplayOrder[] {
   }));
 }
 
-function toMockOrders(source: ReturnType<typeof myOrders>): DisplayOrder[] {
-  return source.slice(0, 4).map((o) => ({
-    id: o.id,
-    customer: o.customer,
-    event: o.event,
-    type: o.type,
-    amount: String(o.amount),
-    status: o.status,
-  }));
-}
-
 export default function OrganizerDashboardPage() {
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<unknown>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -102,22 +79,16 @@ export default function OrganizerDashboardPage() {
     async function load() {
       setStatus("loading");
       try {
-        // In production the access token is written to localStorage by the
-        // sign-in flow. There's no sign-in flow yet, so this reads whatever
-        // is there (or nothing) — the request still goes out unauthenticated
-        // if no token is present, and the catch below handles the 401.
-        const token =
-          typeof window !== "undefined" ? window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) : null;
+        const token = window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);
         const data = await getDashboard(token);
         if (!cancelled) {
           setDashboard(data);
           setStatus("ready");
         }
       } catch (err) {
-        if (!cancelled) {
-          setErrorMessage(err instanceof Error ? err.message : "Unknown error");
-          setStatus("error");
-        }
+        if (cancelled) return;
+        setLoadError(err);
+        setStatus("error");
       }
     }
 
@@ -125,34 +96,33 @@ export default function OrganizerDashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [attempt]);
 
   if (status === "loading") return <DashboardSkeleton />;
 
-  const live = status === "ready" ? dashboard : null;
-  const events = live ? toDisplayEvents(live) : toMockEvents(myEvents());
-  const orders = live ? toDisplayOrders(live) : toMockOrders(myOrders());
+  if (status === "error" || !dashboard) {
+    return (
+      <div className="p-4 sm:p-6">
+        <PageHeader title="My Dashboard" subtitle="Overview of your events and sales." />
+        <div className="mt-6">
+          <LoadError error={loadError} onRetry={() => setAttempt((n) => n + 1)} />
+        </div>
+      </div>
+    );
+  }
 
-  const revenue = live ? live.total_revenue : String(myEvents().reduce((s, e) => s + e.revenue, 0));
-  const tickets = live ? live.total_tickets_sold : myEvents().reduce((s, e) => s + e.sold, 0);
-  const eventCount = live ? live.total_events : events.length;
-  const teamMembers = live ? live.total_team_members : 0;
-
-  const changeLabel = live
-    ? `${isNegativeAmount(live.revenue_change_percent) ? "↓" : "↑"} ${formatPercent(live.revenue_change_percent)} this month`
-    : "Sample data";
+  const live = dashboard;
+  const events = toDisplayEvents(live);
+  const orders = toDisplayOrders(live);
+  const revenue = live.total_revenue;
+  const tickets = live.total_tickets_sold;
+  const eventCount = live.total_events;
+  const teamMembers = live.total_team_members;
+  const changeLabel = `${isNegativeAmount(live.revenue_change_percent) ? "↓" : "↑"} ${formatPercent(live.revenue_change_percent)} this month`;
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <PageHeader title="My Dashboard" subtitle="Overview of your events and sales." />
-
-      {!live && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-700 text-xs rounded-2xl px-4 py-3">
-          Live API unreachable{errorMessage ? ` (${errorMessage})` : ""} — showing sample data. Set{" "}
-          <code className="font-mono">{ACCESS_TOKEN_STORAGE_KEY}</code> in localStorage with a valid bearer
-          token.
-        </div>
-      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="My Revenue" value={formatMoney(revenue)} icon={DollarSign} sub={changeLabel} />

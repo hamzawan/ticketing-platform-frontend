@@ -1,5 +1,6 @@
 "use client";
 
+import { LoadError } from "@/components/organizer/load-error";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ACCESS_TOKEN_STORAGE_KEY, getEvent, type OrganizerEvent } from "@/lib/api";
@@ -10,7 +11,8 @@ export default function EditEventPage() {
   const { id } = useParams<{ id: string }>();
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [event, setEvent] = useState<OrganizerEvent | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<unknown>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -28,7 +30,7 @@ export default function EditEventPage() {
         setStatus("ready");
       } catch (err) {
         if (!cancelled) {
-          setErrorMessage(err instanceof Error ? err.message : "Unknown error");
+          setLoadError(err);
           setStatus("error");
         }
       }
@@ -38,7 +40,7 @@ export default function EditEventPage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, attempt]);
 
   if (status === "loading") {
     return (
@@ -51,9 +53,7 @@ export default function EditEventPage() {
   if (status === "error") {
     return (
       <div className="p-4 sm:p-6 space-y-5 max-w-2xl">
-        <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-2xl px-4 py-3">
-          Failed to load event{errorMessage ? `: ${errorMessage}` : "."}
-        </div>
+        <LoadError error={loadError} onRetry={() => setAttempt((n) => n + 1)} />
         <button
           onClick={() => router.push("/organizer/events")}
           className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"

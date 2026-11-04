@@ -1,5 +1,6 @@
 "use client";
 
+import { LoadError } from "@/components/organizer/load-error";
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle, Copy, FunnelX, Plus, Trash2, X, XCircle } from "lucide-react";
 import {
@@ -72,7 +73,7 @@ export default function DiscountsPage() {
   const [page, setPage] = useState(1);
   const [data, setData] = useState<DiscountsResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<unknown>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
@@ -113,7 +114,7 @@ export default function DiscountsPage() {
       })
       .catch((err) => {
         if (cancelled) return;
-        setLoadError(err instanceof ApiError ? err.message : "Failed to load discounts.");
+        setLoadError(err);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -481,7 +482,7 @@ export default function DiscountsPage() {
         {loading && !data ? (
           <p className="p-6 text-sm text-muted-foreground text-center">Loading discounts…</p>
         ) : loadError ? (
-          <p className="p-6 text-sm text-red-500 text-center">{loadError}</p>
+          <LoadError error={loadError} onRetry={() => { setLoadError(null); setLoading(true); setReloadKey((k) => k + 1); }} />
         ) : data && data.results.length === 0 ? (
           <p className="p-6 text-sm text-muted-foreground text-center">No discount codes yet.</p>
         ) : (

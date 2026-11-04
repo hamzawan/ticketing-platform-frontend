@@ -1,5 +1,6 @@
 "use client";
 
+import { LoadError } from "@/components/organizer/load-error";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Ticket, X } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
@@ -76,7 +77,7 @@ export default function TicketsPage() {
   const [moreError, setMoreError] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [loadStatus, setLoadStatus] = useState<"loading" | "ready" | "error">("loading");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<unknown>(null);
   const [filters, setFilters] = useState<TicketFilters>({});
   const [draft, setDraft] = useState<TicketFilters>({});
   const [reloadKey, setReloadKey] = useState(0);
@@ -104,7 +105,7 @@ export default function TicketsPage() {
           setLoadingMore(false);
           return;
         }
-        setErrorMessage(err instanceof Error ? err.message : "Unknown error");
+        setLoadError(err);
         setLoadStatus("error");
       });
     return () => {
@@ -209,15 +210,13 @@ export default function TicketsPage() {
       {loadStatus === "loading" && <TicketsSkeleton />}
 
       {loadStatus === "error" && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-2xl px-4 py-3 flex flex-wrap items-center gap-3">
-          <span className="flex-1">Failed to load tickets{errorMessage ? `: ${errorMessage}` : "."}</span>
-          <button onClick={() => {
-              setLoadStatus("loading");
-              setReloadKey((k) => k + 1);
-            }} className="font-semibold underline">
-            Retry
-          </button>
-        </div>
+        <LoadError
+          error={loadError}
+          onRetry={() => {
+            setLoadStatus("loading");
+            setReloadKey((k) => k + 1);
+          }}
+        />
       )}
 
       {loadStatus === "ready" && tickets.length === 0 && (

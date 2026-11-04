@@ -1,5 +1,6 @@
 "use client";
 
+import { LoadError } from "@/components/organizer/load-error";
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle, RotateCcw, Search, X, XCircle } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
@@ -23,7 +24,7 @@ function getStoredToken(): string | null {
 export default function RefundsPage() {
   const [loadStatus, setLoadStatus] = useState<"loading" | "ready" | "error">("loading");
   const [data, setData] = useState<RefundRequestsResponse | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<unknown>(null);
 
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("");
@@ -59,7 +60,7 @@ export default function RefundsPage() {
           setToast({ type: "error", message: "Couldn't refresh the list. Please reload the page." });
           return;
         }
-        setErrorMessage(err instanceof Error ? err.message : "Unknown error");
+        setLoadError(err);
         setLoadStatus("error");
       }
     }
@@ -125,15 +126,11 @@ export default function RefundsPage() {
         </div>
       </div>
 
-      {loadStatus === "error" && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-2xl px-4 py-3">
-          Failed to load refund requests{errorMessage ? `: ${errorMessage}` : "."}
-        </div>
-      )}
-
       {/* Table */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        {loadStatus === "ready" && filtered.length === 0 ? (
+        {loadStatus === "error" ? (
+          <LoadError error={loadError} onRetry={() => setReloadKey((k) => k + 1)} />
+        ) : loadStatus === "ready" && filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <div className="w-10 h-10 rounded-2xl bg-secondary flex items-center justify-center">
               <RotateCcw size={18} className="text-muted-foreground" />

@@ -1,5 +1,6 @@
 "use client";
 
+import { LoadError } from "@/components/organizer/load-error";
 import { useEffect, useMemo, useState } from "react";
 import { BookOpen, RotateCcw, Search } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
@@ -39,7 +40,7 @@ export default function BookingsPage() {
   const [page, setPage] = useState(1);
   const [data, setData] = useState<BookingsResponse | null>(null);
   const [loadStatus, setLoadStatus] = useState<"loading" | "ready" | "error">("loading");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<unknown>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   // Deep link from an event's "See All Bookings": /organizer/bookings?event=<name>
@@ -61,7 +62,7 @@ export default function BookingsPage() {
         setLoadStatus("ready");
       } catch (err) {
         if (cancelled) return;
-        setErrorMessage(err instanceof Error ? err.message : "Unknown error");
+        setLoadError(err);
         setLoadStatus("error");
       }
     }
@@ -194,12 +195,7 @@ export default function BookingsPage() {
             ))}
           </div>
         ) : loadStatus === "error" ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <p className="text-sm font-medium text-red-700">Failed to load bookings{errorMessage ? `: ${errorMessage}` : "."}</p>
-            <button onClick={() => setReloadKey((k) => k + 1)} className="text-xs text-primary hover:underline">
-              Try again
-            </button>
-          </div>
+          <LoadError error={loadError} onRetry={() => setReloadKey((k) => k + 1)} />
         ) : paged.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <div className="w-10 h-10 rounded-2xl bg-secondary flex items-center justify-center">

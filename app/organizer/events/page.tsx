@@ -1,5 +1,6 @@
 "use client";
 
+import { LoadError } from "@/components/organizer/load-error";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { BookOpen, Calendar, ChevronRight, Loader2, MapPin, Plus, Search } from "lucide-react";
@@ -76,7 +77,7 @@ function getStoredToken(): string | null {
 export default function MyEventsPage() {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [events, setEvents] = useState<DisplayEvent[]>([]);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<unknown>(null);
   // Infinite scroll: pages are appended as the sentinel below the list nears the viewport.
   const [loadedPages, setLoadedPages] = useState(0);
   const [hasMore, setHasMore] = useState(false);
@@ -123,7 +124,7 @@ export default function MyEventsPage() {
         setStatus("ready");
       } catch (err) {
         if (cancelled) return;
-        setErrorMessage(err instanceof Error ? err.message : "Unknown error");
+        setLoadError(err);
         setStatus("error");
       } finally {
         if (!cancelled) inFlight.current = false;
@@ -262,18 +263,13 @@ export default function MyEventsPage() {
     return (
       <div className="p-4 sm:p-6 space-y-5">
         {header}
-        <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-2xl px-4 py-3">
-          Failed to load events{errorMessage ? `: ${errorMessage}` : "."}{" "}
-          <button
-            onClick={() => {
-              setStatus("loading");
-              setReloadKey((k) => k + 1);
-            }}
-            className="font-semibold underline"
-          >
-            Retry
-          </button>
-        </div>
+        <LoadError
+          error={loadError}
+          onRetry={() => {
+            setStatus("loading");
+            setReloadKey((k) => k + 1);
+          }}
+        />
       </div>
     );
   }
