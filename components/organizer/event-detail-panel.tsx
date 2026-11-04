@@ -1,5 +1,6 @@
 "use client";
 
+import { todayInputValue } from "@/lib/date";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, BookOpen, CheckCircle, ChevronDown, ChevronRight, Edit2, MapPin, Plus, Trash2, X, XCircle } from "lucide-react";
@@ -460,6 +461,7 @@ function AddSlotModal({
 
   function submit() {
     if (!date || !startTime || !endTime) return setLocalError("Date, start time, and end time are required.");
+    if (date < todayInputValue()) return setLocalError("Date can't be in the past.");
     if (endTime <= startTime) return setLocalError("End time must be after the start time.");
     const parsed = parseTicketFields(ticket);
     if (typeof parsed === "string") return setLocalError(parsed);
@@ -471,7 +473,7 @@ function AddSlotModal({
     <ModalShell title="Add Slot" saving={saving} error={localError ?? error} onClose={onClose} onSubmit={submit} submitLabel="Add Slot">
       <div>
         <label className={lbl}>Date</label>
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inp} />
+        <input type="date" min={todayInputValue()} value={date} onChange={(e) => setDate(e.target.value)} className={inp} />
       </div>
       <div className="grid grid-cols-1 min-[360px]:grid-cols-2 gap-3">
         <div>

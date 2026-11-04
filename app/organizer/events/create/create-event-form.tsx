@@ -14,6 +14,7 @@ import {
   type OrganizerEvent,
 } from "@/lib/api";
 import { RichTextEditor } from "@/components/organizer/rich-text-editor";
+import { todayInputValue } from "@/lib/date";
 import { isEmbedUrl, isShortUrl, MAP_URL_ERROR } from "@/lib/google-maps";
 import { TimePicker } from "@/components/ui/time-picker";
 import { ImageUploader, type UploadedImage } from "@/components/organizer/image-uploader";
@@ -36,12 +37,6 @@ function parseAgeInput(value: string): number | null {
 
 // The API returns times like "14:47:55.432000"; <input type="time"> only
 // accepts "HH:MM" (or "HH:MM:SS"), so trim it down for the form field.
-// Today in the user's local timezone as YYYY-MM-DD (matches <input type="date"> values).
-function todayInputValue(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 function toTimeInputValue(time: string | null | undefined): string {
   return time ? time.slice(0, 5) : "";
 }
