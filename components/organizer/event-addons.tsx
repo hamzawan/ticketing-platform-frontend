@@ -93,9 +93,9 @@ function AddOnFormModal({
           Image <span className="normal-case font-normal">(optional)</span>
         </label>
         {shownImage ? (
-          <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-secondary">
+          <div className="relative w-fit max-w-full rounded-xl overflow-hidden bg-secondary">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={shownImage} alt="Add-on" className="w-full h-full object-cover" />
+            <img src={shownImage} alt="Add-on" className="block w-auto h-auto max-w-full max-h-64 object-contain" />
             <div className="absolute top-2 right-2 flex gap-1.5">
               <button
                 type="button"
@@ -271,10 +271,10 @@ export function EventAddOns({ eventId, editable, onToast }: { eventId: string; e
                 const img = resolveMediaUrl(a.image);
                 return (
                   <li key={a.id} className="p-4 flex flex-wrap sm:flex-nowrap items-start sm:items-center gap-x-3 sm:gap-x-4 gap-y-3">
-                    <div className="w-16 h-16 rounded-xl bg-secondary overflow-hidden flex-shrink-0 flex items-center justify-center text-muted-foreground">
+                    <div className={`h-16 rounded-xl bg-secondary overflow-hidden flex-shrink-0 flex items-center justify-center text-muted-foreground ${img ? "" : "w-16"}`}>
                       {img ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={img} alt={a.name} className="w-full h-full object-cover" />
+                        <img src={img} alt={a.name} className="block h-16 w-auto max-w-56 object-contain" />
                       ) : (
                         <ImagePlus size={18} aria-hidden />
                       )}
