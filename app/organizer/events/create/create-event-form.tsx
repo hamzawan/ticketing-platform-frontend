@@ -15,6 +15,7 @@ import {
 } from "@/lib/api";
 import { RichTextEditor } from "@/components/organizer/rich-text-editor";
 import { isEmbedUrl, isShortUrl, MAP_URL_ERROR } from "@/lib/google-maps";
+import { TimePicker } from "@/components/ui/time-picker";
 import { ImageUploader, type UploadedImage } from "@/components/organizer/image-uploader";
 
 type DraftSession = { id: string; date: string; startTime: string; endTime: string };
@@ -738,17 +739,21 @@ export function CreateEventForm({
                       </div>
                       <div>
                         <label className={lbl}>Start Time</label>
-                        <input
-                          type="time"
+                        <TimePicker
                           value={s.startTime}
-                          onChange={(e) => updateSession(s.id, "startTime", e.target.value)}
-                          className={`${inp} ${fe.startTime ? "border-red-400!" : ""}`}
+                          onChange={(v) => {
+                            updateSession(s.id, "startTime", v);
+                            // An end time at or before the new start is no longer valid.
+                            if (s.endTime && s.endTime <= v) updateSession(s.id, "endTime", "");
+                          }}
+                          invalid={!!fe.startTime}
+                          ariaLabel="Start time"
                         />
                         {fe.startTime && <p className="text-[11px] text-red-600 mt-1.5">{fe.startTime}</p>}
                       </div>
                       <div>
                         <label className={lbl}>End Time</label>
-                        <input type="time" value={s.endTime} onChange={(e) => updateSession(s.id, "endTime", e.target.value)} className={`${inp} ${fe.endTime ? "border-red-400!" : ""}`} />
+                        <TimePicker value={s.endTime} onChange={(v) => !(s.startTime && v <= s.startTime) && updateSession(s.id, "endTime", v)} minTime={s.startTime || undefined} invalid={!!fe.endTime} ariaLabel="End time" />
                         {fe.endTime && <p className="text-[11px] text-red-600 mt-1.5">{fe.endTime}</p>}
                       </div>
                     </div>
