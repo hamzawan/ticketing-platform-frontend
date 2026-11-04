@@ -46,15 +46,6 @@ function toTimeInputValue(time: string | null | undefined): string {
   return time ? time.slice(0, 5) : "";
 }
 
-// A draft saved without times comes back from the API with the same placeholder
-// time (the moment it was saved) in both fields. A real session always ends after
-// it starts, so an equal pair means "not set" — show empty pickers instead.
-function initialSessionTimes(event: OrganizerEvent | undefined): { startTime: string; endTime: string } {
-  const startTime = toTimeInputValue(event?.start_time);
-  const endTime = toTimeInputValue(event?.end_time);
-  return startTime && startTime === endTime ? { startTime: "", endTime: "" } : { startTime, endTime };
-}
-
 function fmtTime(t: string): string {
   if (!t) return "";
   const [hStr, m] = t.split(":");
@@ -114,7 +105,8 @@ export function CreateEventForm({
     {
       id: firstSessionId,
       date: initialEvent?.event_date ?? "",
-      ...initialSessionTimes(initialEvent),
+      startTime: toTimeInputValue(initialEvent?.start_time),
+      endTime: toTimeInputValue(initialEvent?.end_time),
     },
   ]);
   const [ticketTypes, setTicketTypes] = useState<DraftTicketType[]>(
