@@ -1,8 +1,8 @@
 "use client";
 
 import { LoadError } from "@/components/organizer/load-error";
-import { useEffect, useMemo, useState } from "react";
-import { CheckCircle, Copy, FunnelX, Plus, Trash2, X, XCircle } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, CheckCircle, Copy, FunnelX, Plus, Trash2, X, XCircle } from "lucide-react";
 import {
   ACCESS_TOKEN_STORAGE_KEY,
   ApiError,
@@ -67,6 +67,21 @@ function fmtExpiry(iso: string | null | undefined): string {
 
 export default function DiscountsPage() {
   const [show, setShow] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current); }, []);
+
+  async function copyCode(id: string, code: string) {
+    try {
+      await navigator.clipboard.writeText(code);
+    } catch {
+      return;
+    }
+    setCopiedId(id);
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+    copyTimer.current = setTimeout(() => setCopiedId(null), 1500);
+  }
   const [events, setEvents] = useState<MyEventListItem[]>([]);
   const [filterEventId, setFilterEventId] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
@@ -458,11 +473,11 @@ export default function DiscountsPage() {
                     <td className="p-4">
                       <div className="flex gap-2">
                         <button
-                          aria-label={`Copy ${d.code}`}
-                          onClick={() => navigator.clipboard?.writeText(d.code)}
-                          className="text-muted-foreground hover:text-foreground"
+                          aria-label={copiedId === d.id ? `Copied ${d.code}` : `Copy ${d.code}`}
+                          onClick={() => copyCode(d.id, d.code)}
+                          className={`relative ${copiedId === d.id ? "text-green-600" : "text-muted-foreground hover:text-foreground"}`}
                         >
-                          <Copy size={13} />
+                          {copiedId === d.id ? <Check size={13} strokeWidth={3} /> : <Copy size={13} />}
                         </button>
                         <button
                           aria-label={`Delete ${d.code}`}
