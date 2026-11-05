@@ -366,7 +366,7 @@ export default function DiscountsPage() {
             </div>
             <div>
               <label className={LABEL_CLASS}>End Date &amp; Time</label>
-              <DateTimePicker value={endAt} onChange={setEndAt} min={endMin} max={eventRange?.max} ariaLabel="End date and time" />
+              <DateTimePicker value={endAt} onChange={setEndAt} min={endMin} max={eventRange?.max} alignRight ariaLabel="End date and time" />
               {eventRange && (
                 <p className="text-[11px] text-muted-foreground mt-1.5">
                   Event runs {fmtRangeEnd(eventRange.min)} – {fmtRangeEnd(eventRange.max)}

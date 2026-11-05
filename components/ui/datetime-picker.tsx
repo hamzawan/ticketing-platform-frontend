@@ -35,6 +35,7 @@ export function DateTimePicker({
   min,
   max,
   invalid,
+  alignRight,
   ariaLabel,
 }: {
   value: string;
@@ -42,6 +43,8 @@ export function DateTimePicker({
   min?: string;
   max?: string;
   invalid?: boolean;
+  // On wide screens the popup opens leftwards, for a field in the right-hand column.
+  alignRight?: boolean;
   ariaLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -122,12 +125,12 @@ export function DateTimePicker({
         <CalendarClock size={14} className="flex-shrink-0 text-muted-foreground" />
       </button>
       {open && (
-        <div role="dialog" aria-label={ariaLabel} className="absolute z-40 mt-1.5 w-[min(26rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-border bg-card shadow-lg sm:flex">
-          <div className="p-3 sm:w-56 flex-shrink-0">
+        <div role="dialog" aria-label={ariaLabel} className={`absolute z-40 mt-1.5 inset-x-0 sm:inset-x-auto ${alignRight ? "sm:right-0" : "sm:left-0"} sm:w-[26rem] max-w-full overflow-hidden rounded-xl border border-border bg-card shadow-lg sm:flex`}>
+          <div className="p-3 sm:w-56 sm:flex-shrink-0">
             <div className="flex items-center justify-between mb-2">
-              <button type="button" aria-label="Previous month" onClick={() => step(-1)} className="p-1 rounded hover:bg-secondary cursor-pointer"><ChevronLeft size={14} /></button>
+              <button type="button" aria-label="Previous month" onClick={() => step(-1)} className="p-2 sm:p-1 rounded hover:bg-secondary cursor-pointer"><ChevronLeft size={14} /></button>
               <span className="text-sm font-medium">{monthLabel}</span>
-              <button type="button" aria-label="Next month" onClick={() => step(1)} className="p-1 rounded hover:bg-secondary cursor-pointer"><ChevronRight size={14} /></button>
+              <button type="button" aria-label="Next month" onClick={() => step(1)} className="p-2 sm:p-1 rounded hover:bg-secondary cursor-pointer"><ChevronRight size={14} /></button>
             </div>
             <div className="grid grid-cols-7 text-center text-[11px] text-muted-foreground mb-1">
               {WEEKDAYS.map((d) => <span key={d}>{d}</span>)}
@@ -145,7 +148,7 @@ export function DateTimePicker({
                     disabled={disabled}
                     aria-pressed={selected}
                     onClick={() => choose({ date: key })}
-                    className={`h-7 rounded text-xs tabular-nums ${
+                    className={`h-9 sm:h-7 rounded text-sm sm:text-xs tabular-nums ${
                       disabled ? "opacity-30 cursor-not-allowed" : selected ? "bg-primary text-white cursor-pointer" : "hover:bg-secondary cursor-pointer"
                     }`}
                   >
@@ -155,7 +158,7 @@ export function DateTimePicker({
               })}
             </div>
           </div>
-          <div className="flex border-t sm:border-t-0 sm:border-l border-border w-52 max-w-full">
+          <div className="flex border-t sm:border-t-0 sm:border-l border-border w-full sm:w-52">
             <TimeColumns sel={sel} onChoose={choose} hourBlocked={hourBlocked} minuteBlocked={minuteBlocked} periodBlocked={periodBlocked} />
           </div>
         </div>
