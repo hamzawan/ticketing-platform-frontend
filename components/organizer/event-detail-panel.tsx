@@ -17,6 +17,7 @@ import {
   extractImageUrl,
   getEvent,
   saveEventSessions,
+  updateSession,
   updateTicketType,
   type EventTicketType,
   type OrganizerEvent,
@@ -39,7 +40,7 @@ type PanelSession = {
   persisted: boolean;
 };
 
-type Modal = { kind: "slot"; date: string } | { kind: "type"; sessionId: string } | { kind: "delete"; ticket: EventTicketType } | { kind: "edit"; ticket: EventTicketType };
+type Modal = { kind: "slot"; date: string } | { kind: "editSlot"; session: PanelSession } | { kind: "type"; sessionId: string } | { kind: "delete"; ticket: EventTicketType } | { kind: "edit"; ticket: EventTicketType };
 
 const inp =
   "w-full min-w-0 max-w-full appearance-none bg-background border border-border rounded-xl px-3 py-2 text-base sm:text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground";
@@ -293,6 +294,7 @@ function SessionRow({
   expanded,
   onToggle,
   editable,
+  onEditSlot,
   onAddType,
   onDeleteType,
   onEditType,
@@ -302,6 +304,8 @@ function SessionRow({
   expanded: boolean;
   onToggle: () => void;
   editable: boolean;
+  // Only given for a draft event's saved slots.
+  onEditSlot?: () => void;
   onAddType: () => void;
   onDeleteType: (tt: EventTicketType) => void;
   onEditType: (tt: EventTicketType) => void;
@@ -351,6 +355,21 @@ function SessionRow({
         </div>
         <div className="flex items-center gap-3 flex-shrink-0 ml-auto">
           <span className="font-mono text-[10px] text-muted-foreground hidden md:block">{session.code ?? session.displayNo}</span>
+          {onEditSlot && (
+            <button
+              type="button"
+              aria-label="Edit slot"
+              title="Edit slot"
+              onClick={(ev) => {
+                ev.stopPropagation();
+                onEditSlot();
+              }}
+              onKeyDown={(ev) => ev.stopPropagation()}
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-secondary cursor-pointer"
+            >
+              <Edit2 size={13} />
+            </button>
+          )}
           <ChevronDown size={13} className={`text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />
         </div>
       </div>
@@ -489,6 +508,59 @@ function AddSlotModal({
           <p className="text-xs text-muted-foreground mt-1">Every slot needs at least one ticket type. You can add more afterwards.</p>
         </div>
         <TicketFields value={ticket} onChange={setTicket} />
+      </div>
+    </ModalShell>
+  );
+}
+
+function EditSlotModal({
+  session,
+  saving,
+  error,
+  onClose,
+  onSave,
+}: {
+  session: PanelSession;
+  saving: boolean;
+  error: string | null;
+  onClose: () => void;
+  onSave: (v: { date: string; startTime: string; endTime: string }) => void;
+}) {
+  const [date, setDate] = useState(session.date);
+  const [startTime, setStartTime] = useState((session.startTime ?? "").slice(0, 5));
+  const [endTime, setEndTime] = useState((session.endTime ?? "").slice(0, 5));
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  function submit() {
+    if (!date || !startTime || !endTime) return setLocalError("Date, start time, and end time are required.");
+    if (date < todayInputValue() && date !== session.date) return setLocalError("Date can't be in the past.");
+    if (endTime <= startTime) return setLocalError("End time must be after the start time.");
+    setLocalError(null);
+    onSave({ date, startTime, endTime });
+  }
+
+  return (
+    <ModalShell title="Edit Slot" saving={saving} error={localError ?? error} onClose={onClose} onSubmit={submit} submitLabel="Save Changes">
+      <div>
+        <label className={lbl}>Date</label>
+        <input type="date" min={todayInputValue()} value={date} onChange={(e) => setDate(e.target.value)} className={inp} />
+      </div>
+      <div className="grid grid-cols-1 min-[360px]:grid-cols-2 gap-3">
+        <div>
+          <label className={lbl}>Start Time</label>
+          <TimePicker
+            value={startTime}
+            onChange={(v) => {
+              setStartTime(v);
+              if (endTime && endTime <= v) setEndTime("");
+            }}
+            ariaLabel="Start time"
+          />
+        </div>
+        <div>
+          <label className={lbl}>End Time</label>
+          <TimePicker value={endTime} onChange={(v) => !(startTime && v <= startTime) && setEndTime(v)} minTime={startTime || undefined} ariaLabel="End time" />
+        </div>
       </div>
     </ModalShell>
   );
@@ -641,6 +713,26 @@ export function EventDetailPanel({
     }
   }
 
+  async function handleEditSlot(session: PanelSession, v: { date: string; startTime: string; endTime: string }) {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const token = typeof window !== "undefined" ? window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) : null;
+      await updateSession(event.id, session.id, { session_date: v.date, start_time: v.startTime, end_time: v.endTime }, token);
+      setModal(null);
+      setToast({ type: "success", message: "Slot updated." });
+      try {
+        onChanged?.(await getEvent(event.id, token));
+      } catch {
+        setToast({ type: "error", message: "The slot was updated, but the page couldn't refresh. Please reload." });
+      }
+    } catch (err) {
+      setSaveError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleDeleteType(ticket: EventTicketType) {
     setSaving(true);
     setSaveError(null);
@@ -760,6 +852,8 @@ export function EventDetailPanel({
   // Finished events are read-only; draft and on-sale events can be changed.
   const editable = event.status !== "completed";
   // While on sale, the event itself can't be edited and ticket prices are locked.
+  // Slots (date and times) can only be changed while the event is a draft.
+  const isDraft = event.status === "draft";
   const onSale = event.status.replace(/_/g, "-") === "on-sale";
   const status = event.status === "completed" ? "ended" : event.status.replace(/_/g, "-");
 
@@ -920,6 +1014,7 @@ export function EventDetailPanel({
                   expanded={expandedSession === s.id}
                   onToggle={() => setExpandedSession(expandedSession === s.id ? null : s.id)}
                   editable={editable}
+                  onEditSlot={isDraft && s.persisted ? () => setModal({ kind: "editSlot", session: s }) : undefined}
                   onAddType={() => setModal({ kind: "type", sessionId: s.id })}
                   onDeleteType={(ticket) => setModal({ kind: "delete", ticket })}
                   onEditType={(ticket) => setModal({ kind: "edit", ticket })}
@@ -934,6 +1029,9 @@ export function EventDetailPanel({
 
       {modal?.kind === "slot" && (
         <AddSlotModal defaultDate={modal.date} saving={saving} error={saveError} onClose={closeModal} onSave={handleAddSlot} />
+      )}
+      {modal?.kind === "editSlot" && (
+        <EditSlotModal session={modal.session} saving={saving} error={saveError} onClose={closeModal} onSave={(v) => handleEditSlot(modal.session, v)} />
       )}
       {modal?.kind === "type" && (
         <AddTypeModal saving={saving} error={saveError} onClose={closeModal} onSave={(v) => handleAddType(modal.sessionId, v)} />
