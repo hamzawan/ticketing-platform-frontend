@@ -114,7 +114,11 @@ export function DateTimePicker({
         aria-label={ariaLabel}
         aria-expanded={open}
         onClick={() => {
-          if (!open && !current) setDraft({});
+          if (!open) {
+            if (!current) setDraft({});
+            // Open on the month of the chosen date, which the form may have changed.
+            if (parsed) setView({ y: Number(parsed[1]), mo: Number(parsed[2]) - 1 });
+          }
           setOpen((o) => !o);
         }}
         className={`w-full flex items-center justify-between gap-2 bg-background border rounded-xl px-3 py-2.5 text-sm text-left outline-none focus:border-primary cursor-pointer ${

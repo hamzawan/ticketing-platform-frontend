@@ -31,22 +31,18 @@ function label(parts: Parts | null): string {
 }
 
 // Hour / minute / AM-PM picker in the app's style. Times at or before `minTime`
-// ("HH:MM"), before atLeastTime or after maxTime are greyed out and can't be picked — the native <input type="time">
+// ("HH:MM") are greyed out and can't be picked — the native <input type="time">
 // popup is drawn by the browser and can't disable individual times.
 export function TimePicker({
   value,
   onChange,
   minTime,
-  atLeastTime,
-  maxTime,
   invalid,
   ariaLabel,
 }: {
   value: string;
   onChange: (value: string) => void;
   minTime?: string;
-  atLeastTime?: string;
-  maxTime?: string;
   invalid?: boolean;
   ariaLabel?: string;
 }) {
@@ -57,14 +53,8 @@ export function TimePicker({
   // picker keeps the partial choice itself. Each column highlights on its own.
   const [draft, setDraft] = useState<Partial<Parts>>({});
   const sel: Partial<Parts> = current ?? draft;
-  const mins = (v?: string) => { const p = v ? parse(v) : null; return p ? toMinutes(p) : null; };
-  // Allowed times are lo..hi (minutes of the day): after minTime, from atLeastTime, up to maxTime.
-  const min = mins(minTime);
-  const atLeast = mins(atLeastTime);
-  const max = mins(maxTime);
-  const lo = Math.max(min !== null ? min + 1 : 0, atLeast ?? 0);
-  const hi = max ?? 24 * 60 - 1;
-  const blocked = (parts: Parts) => { const t = toMinutes(parts); return t < lo || t > hi; };
+  const min = minTime ? (() => { const p = parse(minTime); return p ? toMinutes(p) : null; })() : null;
+  const blocked = (parts: Parts) => min !== null && toMinutes(parts) <= min;
 
   useEffect(() => {
     if (!open) return;
@@ -84,8 +74,7 @@ export function TimePicker({
 
   function pick(next: Parts) {
     // A change that lands on or before minTime moves to the first allowed minute instead.
-    const t = toMinutes(next);
-    onChange(format(t < lo ? Math.min(lo, hi) : t > hi ? hi : t));
+    onChange(format(min !== null && toMinutes(next) <= min ? Math.min(min + 1, 24 * 60 - 1) : toMinutes(next)));
   }
 
   function choose(part: Partial<Parts>) {
@@ -100,10 +89,10 @@ export function TimePicker({
 
   // Greyed out only when no choice of the still-unpicked parts could be allowed.
   const hourBlocked = (h: number) =>
-    (sel.p ? [sel.p] : PERIODS).every((p) => MINUTES.every((m) => blocked({ h, m, p })));
+    (sel.p ? [sel.p] : PERIODS).every((p) => blocked({ h, m: 59, p }));
   const minuteBlocked = (m: number) =>
     sel.h !== undefined && sel.p !== undefined && blocked({ h: sel.h, m, p: sel.p });
-  const periodBlocked = (p: Period) => HOURS.every((h) => MINUTES.every((m) => blocked({ h, m, p })));
+  const periodBlocked = (p: Period) => blocked({ h: 11, m: 59, p });
 
   return (
     <div ref={rootRef} className="relative">
