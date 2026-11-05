@@ -31,18 +31,22 @@ function label(parts: Parts | null): string {
 }
 
 // Hour / minute / AM-PM picker in the app's style. Times at or before `minTime`
-// ("HH:MM") are greyed out and can't be picked — the native <input type="time">
+// ("HH:MM"), before atLeastTime or after maxTime are greyed out and can't be picked — the native <input type="time">
 // popup is drawn by the browser and can't disable individual times.
 export function TimePicker({
   value,
   onChange,
   minTime,
+  atLeastTime,
+  maxTime,
   invalid,
   ariaLabel,
 }: {
   value: string;
   onChange: (value: string) => void;
   minTime?: string;
+  atLeastTime?: string;
+  maxTime?: string;
   invalid?: boolean;
   ariaLabel?: string;
 }) {
@@ -53,8 +57,14 @@ export function TimePicker({
   // picker keeps the partial choice itself. Each column highlights on its own.
   const [draft, setDraft] = useState<Partial<Parts>>({});
   const sel: Partial<Parts> = current ?? draft;
-  const min = minTime ? (() => { const p = parse(minTime); return p ? toMinutes(p) : null; })() : null;
-  const blocked = (parts: Parts) => min !== null && toMinutes(parts) <= min;
+  const mins = (v?: string) => { const p = v ? parse(v) : null; return p ? toMinutes(p) : null; };
+  // Allowed times are lo..hi (minutes of the day): after minTime, from atLeastTime, up to maxTime.
+  const min = mins(minTime);
+  const atLeast = mins(atLeastTime);
+  const max = mins(maxTime);
+  const lo = Math.max(min !== null ? min + 1 : 0, atLeast ?? 0);
+  const hi = max ?? 24 * 60 - 1;
+  const blocked = (parts: Parts) => { const t = toMinutes(parts); return t < lo || t > hi; };
 
   useEffect(() => {
     if (!open) return;
@@ -74,7 +84,8 @@ export function TimePicker({
 
   function pick(next: Parts) {
     // A change that lands on or before minTime moves to the first allowed minute instead.
-    onChange(format(min !== null && toMinutes(next) <= min ? Math.min(min + 1, 24 * 60 - 1) : toMinutes(next)));
+    const t = toMinutes(next);
+    onChange(format(t < lo ? Math.min(lo, hi) : t > hi ? hi : t));
   }
 
   function choose(part: Partial<Parts>) {
@@ -89,17 +100,10 @@ export function TimePicker({
 
   // Greyed out only when no choice of the still-unpicked parts could be allowed.
   const hourBlocked = (h: number) =>
-    (sel.p ? [sel.p] : PERIODS).every((p) => blocked({ h, m: 59, p }));
+    (sel.p ? [sel.p] : PERIODS).every((p) => MINUTES.every((m) => blocked({ h, m, p })));
   const minuteBlocked = (m: number) =>
     sel.h !== undefined && sel.p !== undefined && blocked({ h: sel.h, m, p: sel.p });
-  const periodBlocked = (p: Period) => blocked({ h: 11, m: 59, p });
-
-  // Laid out like the browser's own time popup: plain columns, selected value filled in blue.
-  const column = "flex-1 max-h-52 overflow-y-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
-  const item = (selected: boolean, disabled: boolean) =>
-    `w-full px-3 py-1.5 text-sm text-center tabular-nums ${
-      disabled ? "opacity-30 cursor-not-allowed" : selected ? "cursor-pointer" : "cursor-pointer hover:bg-secondary"
-    } ${selected ? "bg-primary text-white" : ""}`;
+  const periodBlocked = (p: Period) => HOURS.every((h) => MINUTES.every((m) => blocked({ h, m, p })));
 
   return (
     <div ref={rootRef} className="relative">
@@ -121,56 +125,65 @@ export function TimePicker({
       </button>
       {open && (
         <div role="dialog" aria-label={ariaLabel} className="absolute z-40 mt-1.5 w-52 max-w-[calc(100vw-2rem)] flex overflow-hidden rounded-xl border border-border bg-card shadow-lg">
-          <div role="listbox" aria-label="Hour" className={column}>
-            {HOURS.map((h) => (
-              <button
-                key={h}
-                type="button"
-                role="option"
-                aria-selected={sel.h === h}
-                disabled={hourBlocked(h)}
-                onClick={() => choose({ h })}
-                className={item(sel.h === h, hourBlocked(h))}
-              >
-                {pad(h)}
-              </button>
-            ))}
-          </div>
-          <div role="listbox" aria-label="Minute" className={column}>
-            {MINUTES.map((m) => {
-              const disabled = minuteBlocked(m);
-              return (
-                <button
-                  key={m}
-                  type="button"
-                  role="option"
-                  aria-selected={sel.m === m}
-                  disabled={disabled}
-                  onClick={() => choose({ m })}
-                  className={item(sel.m === m, disabled)}
-                >
-                  {pad(m)}
-                </button>
-              );
-            })}
-          </div>
-          <div role="listbox" aria-label="AM or PM" className="w-16 py-1">
-            {PERIODS.map((p) => (
-              <button
-                key={p}
-                type="button"
-                role="option"
-                aria-selected={sel.p === p}
-                disabled={periodBlocked(p)}
-                onClick={() => choose({ p })}
-                className={item(sel.p === p, periodBlocked(p))}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
+          <TimeColumns
+            sel={sel}
+            onChoose={choose}
+            hourBlocked={hourBlocked}
+            minuteBlocked={minuteBlocked}
+            periodBlocked={periodBlocked}
+          />
         </div>
       )}
     </div>
+  );
+}
+
+// Laid out like the browser's own time popup: plain columns, selected value filled in blue.
+// Shared by TimePicker and DateTimePicker so both look the same.
+export function TimeColumns({
+  sel,
+  onChoose,
+  hourBlocked,
+  minuteBlocked,
+  periodBlocked,
+}: {
+  sel: Partial<Parts>;
+  onChoose: (part: Partial<Parts>) => void;
+  hourBlocked: (h: number) => boolean;
+  minuteBlocked: (m: number) => boolean;
+  periodBlocked: (p: Period) => boolean;
+}) {
+  const column = "flex-1 max-h-52 overflow-y-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
+  const item = (selected: boolean, disabled: boolean) =>
+    `w-full px-3 py-1.5 text-sm text-center tabular-nums ${
+      disabled ? "opacity-30 cursor-not-allowed" : selected ? "cursor-pointer" : "cursor-pointer hover:bg-secondary"
+    } ${selected ? "bg-primary text-white" : ""}`;
+  return (
+    <>
+      <div role="listbox" aria-label="Hour" className={column}>
+        {HOURS.map((h) => (
+          <button key={h} type="button" role="option" aria-selected={sel.h === h} disabled={hourBlocked(h)} onClick={() => onChoose({ h })} className={item(sel.h === h, hourBlocked(h))}>
+            {pad(h)}
+          </button>
+        ))}
+      </div>
+      <div role="listbox" aria-label="Minute" className={column}>
+        {MINUTES.map((m) => {
+          const disabled = minuteBlocked(m);
+          return (
+            <button key={m} type="button" role="option" aria-selected={sel.m === m} disabled={disabled} onClick={() => onChoose({ m })} className={item(sel.m === m, disabled)}>
+              {pad(m)}
+            </button>
+          );
+        })}
+      </div>
+      <div role="listbox" aria-label="AM or PM" className="w-16 py-1">
+        {PERIODS.map((p) => (
+          <button key={p} type="button" role="option" aria-selected={sel.p === p} disabled={periodBlocked(p)} onClick={() => onChoose({ p })} className={item(sel.p === p, periodBlocked(p))}>
+            {p}
+          </button>
+        ))}
+      </div>
+    </>
   );
 }

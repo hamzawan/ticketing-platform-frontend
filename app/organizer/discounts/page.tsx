@@ -20,6 +20,7 @@ import {
 } from "@/lib/api";
 import { getSessions } from "@/components/organizer/event-detail-panel";
 import { Select } from "@/components/ui/select";
+import { DateTimePicker } from "@/components/ui/datetime-picker";
 import { Pagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/ui/page-header";
 import { ProgressBar } from "@/components/ui/progress-bar";
@@ -172,10 +173,20 @@ export default function DiscountsPage() {
   // Typed-in values are clamped into the allowed window, so nothing outside the event's dates can stick.
   const clamp = (v: string, lo?: string, hi?: string) => (!v ? v : lo && v < lo ? lo : hi && v > hi ? hi : v);
 
+  // Dates and times outside the event's window, or an end not after the start, are greyed out in the pickers.
+  const shiftMin = (v: string, by: number) => {
+    const d = new Date(v);
+    d.setMinutes(d.getMinutes() + by);
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
+  const startMax = LOCAL_DT.test(endAt) ? (eventRange && eventRange.max < shiftMin(endAt, -1) ? eventRange.max : shiftMin(endAt, -1)) : eventRange?.max;
+  const endMin = LOCAL_DT.test(startAt) ? shiftMin(startAt, 1) : eventRange?.min;
+
   function handleStartChange(raw: string) {
-    const v = clamp(raw, eventRange?.min, eventRange?.max);
+    const v = LOCAL_DT.test(raw) ? clamp(raw, eventRange?.min, eventRange?.max) : raw;
     setStartAt(v);
-    if (v && endAt && endAt <= v) setEndAt(eventRange && eventRange.max > v ? eventRange.max : "");
+    if (LOCAL_DT.test(v) && LOCAL_DT.test(endAt) && endAt <= v) setEndAt(eventRange && eventRange.max > v ? eventRange.max : "");
   }
 
   const sessions = useMemo(() => (eventDetail ? getSessions(eventDetail).filter((s) => s.persisted) : []), [eventDetail]);
@@ -220,7 +231,7 @@ export default function DiscountsPage() {
   async function handleCreate() {
     const numValue = Number(value);
     const numMax = Number(maxUses);
-    if (!eventId || !sessionId || !ticketTypeId || !code.trim() || !value || !maxUses || !startAt || !endAt) {
+    if (!eventId || !sessionId || !ticketTypeId || !code.trim() || !value || !maxUses || !LOCAL_DT.test(startAt) || !LOCAL_DT.test(endAt)) {
       return setFormError("Please fill in all fields.");
     }
     if (!(numValue > 0)) return setFormError("Discount value must be greater than 0.");
@@ -351,25 +362,11 @@ export default function DiscountsPage() {
             </div>
             <div>
               <label className={LABEL_CLASS}>Start Date &amp; Time</label>
-              <input
-                type="datetime-local"
-                value={startAt}
-                min={eventRange?.min}
-                max={eventRange?.max}
-                onChange={(e) => handleStartChange(e.target.value)}
-                className={INPUT_CLASS}
-              />
+              <DateTimePicker value={startAt} onChange={handleStartChange} min={eventRange?.min} max={startMax} ariaLabel="Start date and time" />
             </div>
             <div>
               <label className={LABEL_CLASS}>End Date &amp; Time</label>
-              <input
-                type="datetime-local"
-                value={endAt}
-                min={startAt || eventRange?.min}
-                max={eventRange?.max}
-                onChange={(e) => setEndAt(clamp(e.target.value, startAt || eventRange?.min, eventRange?.max))}
-                className={INPUT_CLASS}
-              />
+              <DateTimePicker value={endAt} onChange={setEndAt} min={endMin} max={eventRange?.max} ariaLabel="End date and time" />
               {eventRange && (
                 <p className="text-[11px] text-muted-foreground mt-1.5">
                   Event runs {fmtRangeEnd(eventRange.min)} – {fmtRangeEnd(eventRange.max)}
