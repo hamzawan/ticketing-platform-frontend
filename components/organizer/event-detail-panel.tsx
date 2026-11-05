@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, BookOpen, CheckCircle, ChevronDown, ChevronRight, Edit2, MapPin, Plus, Trash2, X, XCircle } from "lucide-react";
 import { StatusBadge } from "@/components/ui/badge";
+import { TimePicker } from "@/components/ui/time-picker";
 import { ModalShell } from "@/components/organizer/modal-shell";
 import { EventAddOns } from "@/components/organizer/event-addons";
 import {
@@ -467,11 +468,19 @@ function AddSlotModal({
       <div className="grid grid-cols-1 min-[360px]:grid-cols-2 gap-3">
         <div>
           <label className={lbl}>Start Time</label>
-          <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inp} />
+          <TimePicker
+            value={startTime}
+            onChange={(v) => {
+              setStartTime(v);
+              // An end time at or before the new start is no longer valid.
+              if (endTime && endTime <= v) setEndTime("");
+            }}
+            ariaLabel="Start time"
+          />
         </div>
         <div>
           <label className={lbl}>End Time</label>
-          <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className={inp} />
+          <TimePicker value={endTime} onChange={(v) => !(startTime && v <= startTime) && setEndTime(v)} minTime={startTime || undefined} ariaLabel="End time" />
         </div>
       </div>
       <div className="pt-3 border-t border-border space-y-4">
