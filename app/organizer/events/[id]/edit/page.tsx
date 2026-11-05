@@ -26,6 +26,12 @@ export default function EditEventPage() {
         const found = await getEvent(id, token);
         if (cancelled) return;
 
+        // Events that are on sale can't be edited; send direct visits back to the list.
+        if (found.status.replace(/_/g, "-") === "on-sale") {
+          router.replace("/organizer/events");
+          return;
+        }
+
         setEvent(found);
         setStatus("ready");
       } catch (err) {
