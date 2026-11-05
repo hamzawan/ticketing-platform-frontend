@@ -475,10 +475,17 @@ export default function DiscountsPage() {
                         <button
                           aria-label={copiedId === d.id ? `Copied ${d.code}` : `Copy ${d.code}`}
                           onClick={() => copyCode(d.id, d.code)}
-                          className={`flex items-center gap-1 text-xs ${copiedId === d.id ? "text-green-600" : "text-muted-foreground hover:text-foreground"}`}
+                          className={`relative ${copiedId === d.id ? "text-green-600" : "text-muted-foreground hover:text-foreground"}`}
                         >
                           {copiedId === d.id ? <Check size={13} /> : <Copy size={13} />}
-                          <span aria-live="polite">{copiedId === d.id ? "Copied!" : ""}</span>
+                          {copiedId === d.id && (
+                            <span
+                              role="status"
+                              className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 -translate-x-1/2 rounded bg-green-600 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white shadow"
+                            >
+                              Copied
+                            </span>
+                          )}
                         </button>
                         <button
                           aria-label={`Delete ${d.code}`}
