@@ -136,17 +136,22 @@ export default function TicketsPage() {
 
   const hasFilters = Boolean(filters.customer_email || filters.date_from || filters.date_to || filters.status);
 
+  const next: TicketFilters = {
+    status: draft.status || undefined,
+    customer_email: draft.customer_email?.trim() || undefined,
+    date_from: draft.date_from || undefined,
+    date_to: draft.date_to || undefined,
+  };
+  // Enabled only when the form differs from what's applied (including clearing a filter back to "All").
+  const canApply = JSON.stringify(next) !== JSON.stringify(filters);
+
   function applyFilters(e: React.FormEvent) {
     e.preventDefault();
+    if (!canApply) return;
     setLoadStatus("loading");
     setMoreError(false);
     setPage(1);
-    setFilters({
-      status: draft.status || undefined,
-      customer_email: draft.customer_email?.trim() || undefined,
-      date_from: draft.date_from || undefined,
-      date_to: draft.date_to || undefined,
-    });
+    setFilters(next);
   }
 
   function clearFilters() {
@@ -197,7 +202,7 @@ export default function TicketsPage() {
             { value: "refunded", label: "Refunded" },
           ]}
         />
-        <button type="submit" className="rounded-xl bg-primary text-white text-sm font-medium px-4 py-2">
+        <button type="submit" disabled={!canApply} className="rounded-xl bg-primary text-white text-sm font-medium px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed">
           Apply
         </button>
         {hasFilters && (
