@@ -94,13 +94,6 @@ export function TimePicker({
     sel.h !== undefined && sel.p !== undefined && blocked({ h: sel.h, m, p: sel.p });
   const periodBlocked = (p: Period) => blocked({ h: 11, m: 59, p });
 
-  // Laid out like the browser's own time popup: plain columns, selected value filled in blue.
-  const column = "flex-1 max-h-52 overflow-y-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
-  const item = (selected: boolean, disabled: boolean) =>
-    `w-full px-3 py-1.5 text-sm text-center tabular-nums ${
-      disabled ? "opacity-30 cursor-not-allowed" : selected ? "cursor-pointer" : "cursor-pointer hover:bg-secondary"
-    } ${selected ? "bg-primary text-white" : ""}`;
-
   return (
     <div ref={rootRef} className="relative">
       <button
@@ -121,56 +114,65 @@ export function TimePicker({
       </button>
       {open && (
         <div role="dialog" aria-label={ariaLabel} className="absolute z-40 mt-1.5 w-52 max-w-[calc(100vw-2rem)] flex overflow-hidden rounded-xl border border-border bg-card shadow-lg">
-          <div role="listbox" aria-label="Hour" className={column}>
-            {HOURS.map((h) => (
-              <button
-                key={h}
-                type="button"
-                role="option"
-                aria-selected={sel.h === h}
-                disabled={hourBlocked(h)}
-                onClick={() => choose({ h })}
-                className={item(sel.h === h, hourBlocked(h))}
-              >
-                {pad(h)}
-              </button>
-            ))}
-          </div>
-          <div role="listbox" aria-label="Minute" className={column}>
-            {MINUTES.map((m) => {
-              const disabled = minuteBlocked(m);
-              return (
-                <button
-                  key={m}
-                  type="button"
-                  role="option"
-                  aria-selected={sel.m === m}
-                  disabled={disabled}
-                  onClick={() => choose({ m })}
-                  className={item(sel.m === m, disabled)}
-                >
-                  {pad(m)}
-                </button>
-              );
-            })}
-          </div>
-          <div role="listbox" aria-label="AM or PM" className="w-16 py-1">
-            {PERIODS.map((p) => (
-              <button
-                key={p}
-                type="button"
-                role="option"
-                aria-selected={sel.p === p}
-                disabled={periodBlocked(p)}
-                onClick={() => choose({ p })}
-                className={item(sel.p === p, periodBlocked(p))}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
+          <TimeColumns
+            sel={sel}
+            onChoose={choose}
+            hourBlocked={hourBlocked}
+            minuteBlocked={minuteBlocked}
+            periodBlocked={periodBlocked}
+          />
         </div>
       )}
     </div>
+  );
+}
+
+// Laid out like the browser's own time popup: plain columns, selected value filled in blue.
+// Shared by TimePicker and DateTimePicker so both look the same.
+export function TimeColumns({
+  sel,
+  onChoose,
+  hourBlocked,
+  minuteBlocked,
+  periodBlocked,
+}: {
+  sel: Partial<Parts>;
+  onChoose: (part: Partial<Parts>) => void;
+  hourBlocked: (h: number) => boolean;
+  minuteBlocked: (m: number) => boolean;
+  periodBlocked: (p: Period) => boolean;
+}) {
+  const column = "flex-1 max-h-52 overflow-y-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
+  const item = (selected: boolean, disabled: boolean) =>
+    `w-full px-3 py-1.5 text-sm text-center tabular-nums ${
+      disabled ? "opacity-30 cursor-not-allowed" : selected ? "cursor-pointer" : "cursor-pointer hover:bg-secondary"
+    } ${selected ? "bg-primary text-white" : ""}`;
+  return (
+    <>
+      <div role="listbox" aria-label="Hour" className={column}>
+        {HOURS.map((h) => (
+          <button key={h} type="button" role="option" aria-selected={sel.h === h} disabled={hourBlocked(h)} onClick={() => onChoose({ h })} className={item(sel.h === h, hourBlocked(h))}>
+            {pad(h)}
+          </button>
+        ))}
+      </div>
+      <div role="listbox" aria-label="Minute" className={column}>
+        {MINUTES.map((m) => {
+          const disabled = minuteBlocked(m);
+          return (
+            <button key={m} type="button" role="option" aria-selected={sel.m === m} disabled={disabled} onClick={() => onChoose({ m })} className={item(sel.m === m, disabled)}>
+              {pad(m)}
+            </button>
+          );
+        })}
+      </div>
+      <div role="listbox" aria-label="AM or PM" className="w-16 py-1">
+        {PERIODS.map((p) => (
+          <button key={p} type="button" role="option" aria-selected={sel.p === p} disabled={periodBlocked(p)} onClick={() => onChoose({ p })} className={item(sel.p === p, periodBlocked(p))}>
+            {p}
+          </button>
+        ))}
+      </div>
+    </>
   );
 }
