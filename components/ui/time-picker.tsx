@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Clock } from "lucide-react";
 
 type Period = "AM" | "PM";
@@ -48,6 +49,10 @@ export function TimePicker({
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+  // The popup is drawn on <body>, positioned from the field, so a modal's
+  // scrolling / clipping can't hide it and it always sits above the modal.
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number } | null>(null);
   const current = parse(value);
   // Until all three parts are chosen nothing is reported to the parent, so the
   // picker keeps the partial choice itself. Each column highlights on its own.
@@ -58,15 +63,30 @@ export function TimePicker({
 
   useEffect(() => {
     if (!open) return;
+    const place = () => {
+      const r = rootRef.current?.getBoundingClientRect();
+      if (!r) return;
+      const width = 208;
+      const left = Math.max(8, Math.min(r.left, window.innerWidth - width - 8));
+      // Open upwards when there is no room below (e.g. a field near the bottom of a modal).
+      const flip = window.innerHeight - r.bottom < 230 && r.top > window.innerHeight - r.bottom;
+      setPos(flip ? { bottom: window.innerHeight - r.top + 6, left } : { top: r.bottom + 6, left });
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
     const onDown = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (!rootRef.current?.contains(t) && !popupRef.current?.contains(t)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
     // Bring the selected hour / minute into view in the scrolling columns.
-    rootRef.current?.querySelectorAll('[aria-selected="true"]').forEach((el) => el.scrollIntoView({ block: "nearest" }));
+    popupRef.current?.querySelectorAll('[aria-selected="true"]').forEach((el) => el.scrollIntoView({ block: "nearest" }));
     return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
     };
@@ -112,8 +132,14 @@ export function TimePicker({
         <span className={current ? "" : "text-muted-foreground"}>{label(current)}</span>
         <Clock size={14} className="flex-shrink-0 text-muted-foreground" />
       </button>
-      {open && (
-        <div role="dialog" aria-label={ariaLabel} className="absolute z-40 mt-1.5 w-52 max-w-[calc(100vw-2rem)] flex overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+      {open && pos && createPortal(
+        <div
+          ref={popupRef}
+          role="dialog"
+          aria-label={ariaLabel}
+          style={{ position: "fixed", top: pos.top, bottom: pos.bottom, left: pos.left }}
+          className="z-[100] w-52 flex overflow-hidden rounded-xl border border-border bg-card shadow-lg"
+        >
           <TimeColumns
             sel={sel}
             onChoose={choose}
@@ -121,7 +147,8 @@ export function TimePicker({
             minuteBlocked={minuteBlocked}
             periodBlocked={periodBlocked}
           />
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
