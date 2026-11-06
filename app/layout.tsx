@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Figtree, DM_Sans } from "next/font/google";
 import "./globals.css";
+import { ServiceWorkerRegister } from "@/components/service-worker-register";
 
 const figtree = Figtree({
   variable: "--font-display",
@@ -20,7 +21,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${figtree.variable} ${dmSans.variable} h-full antialiased`}>
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        <ServiceWorkerRegister />
+        {children}
+      </body>
     </html>
   );
 }
