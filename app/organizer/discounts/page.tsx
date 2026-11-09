@@ -36,11 +36,9 @@ function getToken(): string | null {
 
 const LOCAL_DT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 
-// The event's overall window as datetime-local strings: earliest session start to latest session end.
-function getEventRange(ev: OrganizerEvent | null): { min: string; max: string } | null {
-  if (!ev) return null;
+// The selected session's window as datetime-local strings: earliest start to latest end.
+function getEventRange(sessions: ReturnType<typeof getSessions>): { min: string; max: string } | null {
   const at = (date: string | null, time: string | null) => `${date ?? ""}T${(time ?? "").slice(0, 5)}`;
-  const sessions = getSessions(ev);
   const starts = sessions.map((s) => at(s.date, s.startTime)).filter((v) => LOCAL_DT.test(v)).sort();
   const ends = sessions.map((s) => at(s.date, s.endTime)).filter((v) => LOCAL_DT.test(v)).sort();
   if (!starts.length || !ends.length || ends[ends.length - 1] <= starts[0]) return null;
@@ -148,6 +146,8 @@ export default function DiscountsPage() {
     setEventId(id);
     setSessionId("");
     setTicketTypeId("");
+    setStartAt("");
+    setEndAt("");
     setEventDetail(null);
     setFormError(null);
     if (!id) return;
@@ -155,10 +155,6 @@ export default function DiscountsPage() {
     getEvent(id, getToken())
       .then((ev) => {
         setEventDetail(ev);
-        // Default the window to the event's own dates; both stay editable.
-        const range = getEventRange(ev);
-        setStartAt(range?.min ?? "");
-        setEndAt(range?.max ?? "");
       })
       .catch((err) => setFormError(err instanceof ApiError ? err.message : "Couldn't load this event's sessions."))
       .finally(() => setLoadingDetail(false));
@@ -167,7 +163,36 @@ export default function DiscountsPage() {
   // Discounts can only be created for events that are on sale (API sends "on_sale").
   const onSaleEvents = useMemo(() => events.filter((e) => e.status.replace(/_/g, "-") === "on-sale"), [events]);
 
-  const eventRange = useMemo(() => getEventRange(eventDetail), [eventDetail]);
+  const sessions = useMemo(() => (eventDetail ? getSessions(eventDetail).filter((s) => s.persisted) : []), [eventDetail]);
+  const selectedSession = sessions.find((s) => s.id === sessionId);
+  // Allowed window: from the moment the session was picked (today/now) to the session's end.
+  const [nowMin, setNowMin] = useState("");
+  const eventRange = useMemo(() => {
+    const r = selectedSession ? getEventRange([selectedSession]) : null;
+    if (!r || !nowMin) return null;
+    return r.max > nowMin ? { min: nowMin, max: r.max } : null;
+  }, [selectedSession, nowMin]);
+
+  // Once a session is picked, start defaults to now and end to the session's end; both stay editable in between.
+  function handleSessionChange(id: string) {
+    setSessionId(id);
+    setFormError(null);
+    setTicketTypeId("");
+    const sel = sessions.find((s) => s.id === id);
+    const range = sel ? getEventRange([sel]) : null;
+    const d = new Date();
+    const p = (n: number) => String(n).padStart(2, "0");
+    const now = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+    setNowMin(now);
+    if (range && range.max > now) {
+      setStartAt(now);
+      setEndAt(range.max);
+    } else {
+      setStartAt("");
+      setEndAt("");
+      if (range) setFormError("This session has already ended.");
+    }
+  }
 
   // Moving the start past the end pushes the end out to the event's end (or clears it if there's no room).
   // Typed-in values are clamped into the allowed window, so nothing outside the event's dates can stick.
@@ -189,8 +214,7 @@ export default function DiscountsPage() {
     if (LOCAL_DT.test(v) && LOCAL_DT.test(endAt) && endAt <= v) setEndAt(eventRange && eventRange.max > v ? eventRange.max : "");
   }
 
-  const sessions = useMemo(() => (eventDetail ? getSessions(eventDetail).filter((s) => s.persisted) : []), [eventDetail]);
-  const ticketTypes = sessions.find((s) => s.id === sessionId)?.ticketTypes ?? [];
+  const ticketTypes = selectedSession?.ticketTypes ?? [];
 
   function closeForm() {
     setShow(false);
@@ -307,10 +331,7 @@ export default function DiscountsPage() {
               <label className={LABEL_CLASS}>Session</label>
               <Select
                 value={sessionId}
-                onChange={(v) => {
-                  setSessionId(v);
-                  setTicketTypeId("");
-                }}
+                onChange={handleSessionChange}
                 disabled={!eventId || loadingDetail}
                 placeholder={loadingDetail ? "Loading sessions…" : "Select session"}
                 ariaLabel="Session"
@@ -362,14 +383,14 @@ export default function DiscountsPage() {
             </div>
             <div>
               <label className={LABEL_CLASS}>Start Date &amp; Time</label>
-              <DateTimePicker value={startAt} onChange={handleStartChange} min={eventRange?.min} max={startMax} ariaLabel="Start date and time" />
+              <DateTimePicker value={startAt} onChange={handleStartChange} min={eventRange?.min} max={startMax} disabled={!sessionId} ariaLabel="Start date and time" />
             </div>
             <div>
               <label className={LABEL_CLASS}>End Date &amp; Time</label>
-              <DateTimePicker value={endAt} onChange={setEndAt} min={endMin} max={eventRange?.max} alignRight ariaLabel="End date and time" />
+              <DateTimePicker value={endAt} onChange={setEndAt} min={endMin} max={eventRange?.max} alignRight disabled={!sessionId} ariaLabel="End date and time" />
               {eventRange && (
                 <p className="text-[11px] text-muted-foreground mt-1.5">
-                  Event runs {fmtRangeEnd(eventRange.min)} – {fmtRangeEnd(eventRange.max)}
+                  Choose between now and the session end ({fmtRangeEnd(eventRange.max)})
                 </p>
               )}
             </div>
