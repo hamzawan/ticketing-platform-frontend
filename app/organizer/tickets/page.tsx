@@ -27,7 +27,7 @@ function TicketsSkeleton() {
 function Row({ icon: Icon, label, value, mono }: { icon: LucideIcon; label: string; value: string; mono?: boolean }) {
   return (
     <div className="flex items-start gap-3">
-      <span className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+      <span className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-accent" style={{ color: "var(--sidebar)" }}>
         <Icon size={15} />
       </span>
       <div className="min-w-0">
@@ -60,7 +60,7 @@ function TicketDialog({ ticket, onClose }: { ticket: TicketItem; onClose: () => 
         className="bg-card rounded-2xl w-full max-w-md shadow-xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-3 bg-gradient-to-br from-primary to-blue-800 px-5 py-4 text-primary-foreground">
+        <div className="flex items-start justify-between gap-3 px-5 py-4 text-white" style={{ backgroundColor: "var(--sidebar)" }}>
           <div className="flex items-center gap-3 min-w-0">
             <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white/15">
               <Ticket size={20} />
