@@ -200,20 +200,26 @@ export default function TicketsPage() {
           aria-label="Customer email"
           className="bg-card border border-border rounded-xl px-3 py-2 text-base sm:text-sm outline-none focus:border-primary flex-1 min-w-48"
         />
-        <input
-          type="date"
-          value={draft.date_from ?? ""}
-          onChange={(e) => setDraft((d) => ({ ...d, date_from: e.target.value }))}
-          aria-label="From date"
-          className={INPUT_CLASS}
-        />
-        <input
-          type="date"
-          value={draft.date_to ?? ""}
-          onChange={(e) => setDraft((d) => ({ ...d, date_to: e.target.value }))}
-          aria-label="To date"
-          className={INPUT_CLASS}
-        />
+        {/* iOS Safari renders an empty date input blank, so show a visible label. */}
+        <label className="flex flex-col gap-1 flex-1 min-w-36 sm:flex-none">
+          <span className="text-xs text-muted-foreground">Start date</span>
+          <input
+            type="date"
+            value={draft.date_from ?? ""}
+            onChange={(e) => setDraft((d) => ({ ...d, date_from: e.target.value }))}
+            className={`${INPUT_CLASS} w-full min-w-0`}
+          />
+        </label>
+        {/* iOS Safari renders an empty date input blank, so show a visible label. */}
+        <label className="flex flex-col gap-1 flex-1 min-w-36 sm:flex-none">
+          <span className="text-xs text-muted-foreground">End date</span>
+          <input
+            type="date"
+            value={draft.date_to ?? ""}
+            onChange={(e) => setDraft((d) => ({ ...d, date_to: e.target.value }))}
+            className={`${INPUT_CLASS} w-full min-w-0`}
+          />
+        </label>
         <Select
           className="w-full sm:w-44"
           value={draft.status ?? ""}
