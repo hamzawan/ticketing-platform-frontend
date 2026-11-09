@@ -1,7 +1,7 @@
 import { memo } from "react";
 import { resolveQrSrc, type TicketItem } from "@/lib/api";
 
-const TICKET_STATUS_STYLES: Record<string, string> = {
+export const TICKET_STATUS_STYLES: Record<string, string> = {
   entered: "bg-red-50 text-red-700",
   valid: "bg-emerald-50 text-emerald-700",
   active: "bg-emerald-50 text-emerald-700",

@@ -2,9 +2,9 @@
 
 import { LoadError } from "@/components/organizer/load-error";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Ticket, X } from "lucide-react";
+import { CalendarPlus, Hash, Mail, RefreshCw, Ticket, User, X, type LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
-import { TicketCard } from "@/components/organizer/ticket-card";
+import { TicketCard, TICKET_STATUS_STYLES } from "@/components/organizer/ticket-card";
 import { Select } from "@/components/ui/select";
 import { ACCESS_TOKEN_STORAGE_KEY, formatDateTime, getTickets, type TicketFilters, type TicketItem } from "@/lib/api";
 
@@ -24,6 +24,20 @@ function TicketsSkeleton() {
   );
 }
 
+function Row({ icon: Icon, label, value, mono }: { icon: LucideIcon; label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+        <Icon size={15} />
+      </span>
+      <div className="min-w-0">
+        <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</dt>
+        <dd className={`text-sm font-medium break-all ${mono ? "font-mono text-xs" : ""}`}>{value}</dd>
+      </div>
+    </div>
+  );
+}
+
 // Read-only details of the already-loaded ticket. No scan/validate request is
 // made from here — see the notes on the missing check-ticket endpoint.
 function TicketDialog({ ticket, onClose }: { ticket: TicketItem; onClose: () => void }) {
@@ -33,15 +47,9 @@ function TicketDialog({ ticket, onClose }: { ticket: TicketItem; onClose: () => 
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const rows: [string, string][] = [
-    ...(ticket.user_name ? [["Name", ticket.user_name] as [string, string]] : []),
-    ...(ticket.user_email ? [["Email", ticket.user_email] as [string, string]] : []),
-    ["Status", ticket.status],
-    ["Ticket ID", ticket.id],
-    ["Booking ID", ticket.booking_id],
-    ["Created", formatDateTime(ticket.created_at) || "—"],
-    ["Updated", formatDateTime(ticket.updated_at) || "—"],
-  ];
+  const status = (ticket.status ?? "").toLowerCase();
+  const created = formatDateTime(ticket.created_at) || "—";
+  const updated = formatDateTime(ticket.updated_at) || "—";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
@@ -49,22 +57,37 @@ function TicketDialog({ ticket, onClose }: { ticket: TicketItem; onClose: () => 
         role="dialog"
         aria-modal="true"
         aria-label="Ticket details"
-        className="bg-card rounded-2xl w-full max-w-md p-5 shadow-xl"
+        className="bg-card rounded-2xl w-full max-w-md shadow-xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-bold">Ticket details</h2>
-          <button onClick={onClose} aria-label="Close" className="opacity-60 hover:opacity-100">
+        <div className="flex items-start justify-between gap-3 bg-gradient-to-br from-primary to-blue-800 px-5 py-4 text-primary-foreground">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white/15">
+              <Ticket size={20} />
+            </span>
+            <div className="min-w-0">
+              <h2 className="font-bold leading-tight">Ticket details</h2>
+              <span
+                className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold capitalize ${
+                  TICKET_STATUS_STYLES[status] ?? "bg-slate-100 text-slate-600"
+                }`}
+              >
+                {ticket.status}
+              </span>
+            </div>
+          </div>
+          <button onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 opacity-80 hover:bg-white/15 hover:opacity-100">
             <X size={16} />
           </button>
         </div>
-        <dl className="space-y-3">
-          {rows.map(([label, value]) => (
-            <div key={label}>
-              <dt className="text-xs font-bold">{label}</dt>
-              <dd className="text-sm break-all">{value}</dd>
-            </div>
-          ))}
+
+        <dl className="space-y-4 p-5">
+          {ticket.user_name && <Row icon={User} label="Name" value={ticket.user_name} />}
+          {ticket.user_email && <Row icon={Mail} label="Email" value={ticket.user_email} />}
+          <Row icon={Hash} label="Ticket ID" value={ticket.id} mono />
+          <Row icon={Hash} label="Booking ID" value={ticket.booking_id} mono />
+          <Row icon={CalendarPlus} label="Created" value={created} />
+          <Row icon={RefreshCw} label="Updated" value={updated} />
         </dl>
       </div>
     </div>
