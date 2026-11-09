@@ -14,6 +14,27 @@ function getStoredToken(): string | null {
 
 const INPUT_CLASS = "bg-card border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary";
 
+// Empty <input type="date"> renders blank on iOS Safari (and inconsistently on Android),
+// so while empty we hide the native text and overlay our own placeholder.
+function DateFilter({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="relative flex-1 min-w-36 sm:flex-none">
+      <input
+        type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={label}
+        className={`${INPUT_CLASS} w-full min-w-0 min-h-9 appearance-none ${value ? "" : "text-transparent"}`}
+      />
+      {!value && (
+        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-base sm:text-sm text-muted-foreground">
+          {label}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function TicketsSkeleton() {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 animate-pulse">
@@ -200,26 +221,16 @@ export default function TicketsPage() {
           aria-label="Customer email"
           className="bg-card border border-border rounded-xl px-3 py-2 text-base sm:text-sm outline-none focus:border-primary flex-1 min-w-48"
         />
-        {/* iOS Safari renders an empty date input blank, so show a visible label. */}
-        <label className="flex flex-col gap-1 flex-1 min-w-36 sm:flex-none">
-          <span className="text-xs text-muted-foreground">Start date</span>
-          <input
-            type="date"
-            value={draft.date_from ?? ""}
-            onChange={(e) => setDraft((d) => ({ ...d, date_from: e.target.value }))}
-            className={`${INPUT_CLASS} w-full min-w-0`}
-          />
-        </label>
-        {/* iOS Safari renders an empty date input blank, so show a visible label. */}
-        <label className="flex flex-col gap-1 flex-1 min-w-36 sm:flex-none">
-          <span className="text-xs text-muted-foreground">End date</span>
-          <input
-            type="date"
-            value={draft.date_to ?? ""}
-            onChange={(e) => setDraft((d) => ({ ...d, date_to: e.target.value }))}
-            className={`${INPUT_CLASS} w-full min-w-0`}
-          />
-        </label>
+        <DateFilter
+          label="Start date"
+          value={draft.date_from ?? ""}
+          onChange={(v) => setDraft((d) => ({ ...d, date_from: v }))}
+        />
+        <DateFilter
+          label="End date"
+          value={draft.date_to ?? ""}
+          onChange={(v) => setDraft((d) => ({ ...d, date_to: v }))}
+        />
         <Select
           className="w-full sm:w-44"
           value={draft.status ?? ""}
