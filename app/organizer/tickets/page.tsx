@@ -6,7 +6,7 @@ import { Ticket, X } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { TicketCard } from "@/components/organizer/ticket-card";
 import { Select } from "@/components/ui/select";
-import { ACCESS_TOKEN_STORAGE_KEY, formatDate, getTickets, type TicketFilters, type TicketItem } from "@/lib/api";
+import { ACCESS_TOKEN_STORAGE_KEY, formatDateTime, getTickets, type TicketFilters, type TicketItem } from "@/lib/api";
 
 function getStoredToken(): string | null {
   return typeof window !== "undefined" ? window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) : null;
@@ -34,11 +34,13 @@ function TicketDialog({ ticket, onClose }: { ticket: TicketItem; onClose: () => 
   }, [onClose]);
 
   const rows: [string, string][] = [
+    ...(ticket.user_name ? [["Name", ticket.user_name] as [string, string]] : []),
+    ...(ticket.user_email ? [["Email", ticket.user_email] as [string, string]] : []),
     ["Status", ticket.status],
     ["Ticket ID", ticket.id],
     ["Booking ID", ticket.booking_id],
-    ["Created", formatDate(ticket.created_at)],
-    ["Updated", formatDate(ticket.updated_at)],
+    ["Created", formatDateTime(ticket.created_at) || "—"],
+    ["Updated", formatDateTime(ticket.updated_at) || "—"],
   ];
 
   return (

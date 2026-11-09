@@ -269,6 +269,21 @@ export function formatDate(iso: string): string {
   });
 }
 
+// Date + time in the viewer's local timezone, e.g. "Oct 7, 2026, 3:45 PM".
+export function formatDateTime(iso: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
 // For date-only fields (e.g. "2026-10-07", no time component). Parsing that
 // through `new Date()`/formatDate treats it as UTC midnight, which can
 // display as the previous day once toLocaleDateString converts to the
@@ -926,6 +941,9 @@ export type TicketItem = {
   status: string;
   // Image URL, server-relative path, data URI or raw base64 — see resolveQrSrc().
   qr_code: string | null;
+  // Buyer details, shown at the top of the details popup.
+  user_name?: string | null;
+  user_email?: string | null;
   created_at: string;
   updated_at: string;
 };
