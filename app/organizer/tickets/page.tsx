@@ -24,7 +24,7 @@ function DateFilter({ label, value, onChange }: { label: string; value: string; 
         value={value}
         onChange={(e) => onChange(e.target.value)}
         aria-label={label}
-        className={`${INPUT_CLASS} w-full min-w-0 min-h-9 appearance-none ${value ? "" : "text-transparent"}`}
+        className={`${INPUT_CLASS} w-full min-w-0 min-h-9 appearance-none max-sm:[&::-webkit-calendar-picker-indicator]:hidden ${value ? "" : "text-transparent"}`}
       />
       {!value && (
         <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-base sm:text-sm text-muted-foreground">
