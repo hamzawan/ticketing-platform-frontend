@@ -198,7 +198,7 @@ export default function TicketsPage() {
           onChange={(e) => setDraft((d) => ({ ...d, customer_email: e.target.value }))}
           placeholder="Customer email"
           aria-label="Customer email"
-          className={`${INPUT_CLASS} flex-1 min-w-48`}
+          className="bg-card border border-border rounded-xl px-3 py-2 text-base sm:text-sm outline-none focus:border-primary flex-1 min-w-48"
         />
         <input
           type="date"

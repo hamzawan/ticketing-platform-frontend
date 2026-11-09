@@ -117,7 +117,7 @@ export default function BookingsPage() {
               setSearch(e.target.value);
             }}
             placeholder="Search by name or email…"
-            className="flex-1 min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            className="flex-1 min-w-0 bg-transparent text-base sm:text-sm outline-none placeholder:text-muted-foreground"
           />
         </div>
         <Select
