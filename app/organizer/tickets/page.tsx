@@ -2,7 +2,7 @@
 
 import { LoadError } from "@/components/organizer/load-error";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CalendarPlus, Hash, Mail, RefreshCw, Ticket, User, X, type LucideIcon } from "lucide-react";
+import { CalendarDays, CalendarPlus, Hash, Mail, RefreshCw, Ticket, User, X, type LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { TicketCard, TICKET_STATUS_STYLES } from "@/components/organizer/ticket-card";
 import { Select } from "@/components/ui/select";
@@ -24,7 +24,12 @@ function DateFilter({ label, value, onChange }: { label: string; value: string; 
         value={value}
         onChange={(e) => onChange(e.target.value)}
         aria-label={label}
-        className={`${INPUT_CLASS} w-full min-w-0 min-h-9 appearance-none ${value ? "" : "text-transparent"}`}
+        className={`${INPUT_CLASS} w-full min-w-0 min-h-9 appearance-none pr-9 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:opacity-0 ${value ? "" : "text-transparent"}`}
+      />
+      {/* Our own icon: iOS Safari drops the native indicator once appearance is reset. */}
+      <CalendarDays
+        aria-hidden="true"
+        className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
       />
       {!value && (
         <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-base sm:text-sm text-muted-foreground">
