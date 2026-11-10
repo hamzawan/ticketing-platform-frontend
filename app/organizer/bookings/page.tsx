@@ -3,6 +3,7 @@
 import { LoadError } from "@/components/organizer/load-error";
 import { useEffect, useMemo, useState } from "react";
 import { BookOpen, RotateCcw, Search } from "lucide-react";
+import { DatePicker } from "@/components/ui/date-picker";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pagination } from "@/components/ui/pagination";
 import { Select } from "@/components/ui/select";
@@ -143,35 +144,22 @@ export default function BookingsPage() {
             { value: "expired", label: "Expired" },
           ]}
         />
-        <div className="flex items-center justify-between gap-2 flex-1 sm:flex-none min-w-0 bg-card border border-border rounded-xl px-4 py-2.5">
-          <span className="text-xs text-muted-foreground">From</span>
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => {
-              const next = e.target.value;
-              setDateFrom(next);
-              // Keep the range valid: drop a To date that now falls before From.
-              if (next && dateTo && dateTo < next) setDateTo("");
-            }}
-            className="min-w-0 bg-transparent text-sm outline-none text-foreground"
-          />
-        </div>
-        <div className="flex items-center justify-between gap-2 flex-1 sm:flex-none min-w-0 bg-card border border-border rounded-xl px-4 py-2.5">
-          <span className="text-xs text-muted-foreground">To</span>
-          <input
-            type="date"
-            value={dateTo}
-            min={dateFrom || undefined}
-            onChange={(e) => {
-              const next = e.target.value;
-              // min only blocks the picker UI; typed values can still be earlier.
-              if (next && dateFrom && next < dateFrom) return;
-              setDateTo(next);
-            }}
-            className="min-w-0 bg-transparent text-sm outline-none text-foreground"
-          />
-        </div>
+        <DatePicker
+          className="flex-1 min-w-36 sm:flex-none"
+          placeholder="Start date"
+          ariaLabel="Start date"
+          max={dateTo || undefined}
+          value={dateFrom}
+          onChange={setDateFrom}
+        />
+        <DatePicker
+          className="flex-1 min-w-36 sm:flex-none"
+          placeholder="End date"
+          ariaLabel="End date"
+          min={dateFrom || undefined}
+          value={dateTo}
+          onChange={setDateTo}
+        />
         {hasFilters && (
           <button
             onClick={resetFilters}
