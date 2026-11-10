@@ -1,4 +1,4 @@
-import { isShortUrl } from "@/lib/google-maps";
+import { isShortUrl, stripShortUrl } from "@/lib/google-maps";
 
 // A maps.app.goo.gl link is a redirect to the full place URL, which browsers
 // can't read cross-origin. Follow that single redirect here and turn the place
@@ -8,16 +8,29 @@ export async function GET(request: Request) {
   const url = new URL(request.url).searchParams.get("url") ?? "";
   if (!isShortUrl(url)) return Response.json({ error: "Not a Google Maps share link." }, { status: 400 });
 
-  const res = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(5000), cache: "no-store" }).catch(() => null);
+  const res = await fetch(stripShortUrl(url), { redirect: "manual", signal: AbortSignal.timeout(5000), cache: "no-store" }).catch(() => null);
   const target = res?.headers.get("location") ?? "";
-  if (!target.startsWith("https://www.google.com/maps/")) {
+  let place: URL;
+  try {
+    place = new URL(target);
+  } catch {
+    return Response.json({ error: "Couldn't read a location from this link." }, { status: 422 });
+  }
+  if (!["www.google.com", "google.com", "maps.google.com"].includes(place.hostname)) {
     return Response.json({ error: "Couldn't read a location from this link." }, { status: 422 });
   }
 
-  const path = decodeURIComponent(target.split("?")[0]);
-  const pin = path.match(/!3d(-?[\d.]+)!4d(-?[\d.]+)/); // exact pin of the place
-  const name = path.match(/\/maps\/place\/([^/@]+)/);
-  const query = pin ? `${pin[1]},${pin[2]}` : name?.[1].replace(/\+/g, " ");
+  let query: string | undefined;
+  if (place.pathname.startsWith("/maps/")) {
+    // Long form: /maps/place/<name>/data=...!3d<lat>!4d<lng>
+    const path = decodeURIComponent(place.pathname);
+    const pin = path.match(/!3d(-?[\d.]+)!4d(-?[\d.]+)/); // exact pin of the place
+    const name = path.match(/\/maps\/place\/([^/@]+)/);
+    query = pin ? `${pin[1]},${pin[2]}` : name?.[1].replace(/\+/g, " ");
+  } else {
+    // Short form (newer links): https://maps.google.com?q=<address>&ftid=...
+    query = place.searchParams.get("q") ?? undefined;
+  }
   if (!query) return Response.json({ error: "Couldn't read a location from this link." }, { status: 422 });
 
   return Response.json({ url: `https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed` });
