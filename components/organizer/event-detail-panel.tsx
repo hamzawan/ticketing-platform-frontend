@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, BookOpen, CheckCircle, ChevronDown, ChevronRight, Edit2, MapPin, Plus, Trash2, X, XCircle } from "lucide-react";
 import { StatusBadge } from "@/components/ui/badge";
+import { ScrollFade } from "@/components/ui/scroll-fade";
 import { TimePicker } from "@/components/ui/time-picker";
 import { ModalShell } from "@/components/organizer/modal-shell";
 import { EventAddOns } from "@/components/organizer/event-addons";
@@ -176,48 +177,9 @@ function TicketTypesTable({
           </button>
         )}
       </div>
-      {/* Mobile: stacked cards so the edit/delete actions stay on screen */}
-      <ul className="sm:hidden divide-y divide-border/50">
-        {ticketTypes.map((tt) => {
-          const sold = tt.quantity - tt.available_quantity;
-          const pct = soldPercent(sold, tt.quantity);
-          return (
-            <li key={tt.id} className="px-4 py-3 space-y-2">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-xs font-semibold break-words">{tt.name}</div>
-                  <div className="font-mono text-[10px] text-muted-foreground">{tt.ticket_type_code ?? ticketNos.get(tt.id)}</div>
-                </div>
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  <span className="text-xs font-semibold">${tt.price}</span>
-                  {editable && (
-                    <>
-                      <button type="button" aria-label={`Edit ${tt.name}`} onClick={() => onEditType(tt)} className="p-1.5 -m-1 text-muted-foreground hover:text-foreground">
-                        <Edit2 size={13} />
-                      </button>
-                      {canDelete && (
-                        <button type="button" aria-label={`Delete ${tt.name}`} onClick={() => onDeleteType(tt)} className="p-1.5 -m-1 text-muted-foreground hover:text-red-500">
-                          <Trash2 size={13} />
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 h-1 rounded-full bg-secondary overflow-hidden">
-                  <div className={`h-full rounded-full ${pct >= 90 ? "bg-orange-500" : "bg-primary"}`} style={{ width: `${pct}%` }} />
-                </div>
-                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                  {sold.toLocaleString()} sold / {tt.quantity.toLocaleString()} · {tt.available_quantity.toLocaleString()} left
-                </span>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-      <div className="hidden sm:block overflow-x-auto">
-        <table className="w-full text-xs whitespace-nowrap">
+      {/* Same table at every size; on small screens it scrolls sideways like the bookings table. */}
+      <ScrollFade>
+        <table className="w-full min-w-[560px] lg:min-w-0 text-xs whitespace-nowrap">
           <thead>
             <tr className="border-b border-border">
               {["ID", "Name", "Price", "Total", "Available", "Sold"].map((h) => (
@@ -283,7 +245,7 @@ function TicketTypesTable({
             })}
           </tbody>
         </table>
-      </div>
+      </ScrollFade>
     </div>
   );
 }
@@ -318,7 +280,7 @@ function SessionRow({
 
   return (
     <div className={`border border-border rounded-xl overflow-hidden transition-all ${expanded ? "border-primary/40" : ""}`}>
-      <div
+      <ScrollFade
         role="button"
         tabIndex={0}
         aria-expanded={expanded}
@@ -329,50 +291,52 @@ function SessionRow({
             onToggle();
           }
         }}
-        className="w-full flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2 sm:gap-4 px-4 sm:px-5 py-3.5 hover:bg-secondary/30 transition-colors text-left cursor-pointer"
+        className="w-full hover:bg-secondary/30 transition-colors text-left cursor-pointer"
       >
-        <div className="flex-shrink-0 sm:w-24 text-sm font-bold font-(family-name:--font-display)">{fmtTime(session.startTime)}</div>
-        <div className="flex-shrink-0 text-xs text-muted-foreground">→</div>
-        <div className="flex-shrink-0 sm:w-24 text-sm font-bold font-(family-name:--font-display)">{fmtTime(session.endTime)}</div>
-        <div className="order-last sm:order-none w-full sm:w-auto sm:flex-1 flex flex-wrap items-center gap-x-4 gap-y-1 min-w-0">
-          {totalQty > 0 ? (
-            <>
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-20 h-1.5 rounded-full bg-secondary overflow-hidden flex-shrink-0">
-                  <div className={`h-full rounded-full ${pct >= 90 ? "bg-orange-500" : "bg-primary"}`} style={{ width: `${pct}%` }} />
+        <div className="flex w-max min-w-full items-center gap-4 px-4 sm:px-5 py-3.5">
+          <div className="flex-shrink-0 w-24 text-sm font-bold font-(family-name:--font-display)">{fmtTime(session.startTime)}</div>
+          <div className="flex-shrink-0 text-xs text-muted-foreground">→</div>
+          <div className="flex-shrink-0 w-24 text-sm font-bold font-(family-name:--font-display)">{fmtTime(session.endTime)}</div>
+          <div className="flex-1 flex items-center gap-x-4 min-w-max whitespace-nowrap">
+            {totalQty > 0 ? (
+              <>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="w-20 h-1.5 rounded-full bg-secondary overflow-hidden flex-shrink-0">
+                    <div className={`h-full rounded-full ${pct >= 90 ? "bg-orange-500" : "bg-primary"}`} style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {sold}/{totalQty}
+                  </span>
                 </div>
-                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                  {sold}/{totalQty}
+                <span className="text-xs text-muted-foreground">
+                  {tts.length} ticket type{tts.length !== 1 ? "s" : ""}
                 </span>
-              </div>
-              <span className="text-xs text-muted-foreground">
-                {tts.length} ticket type{tts.length !== 1 ? "s" : ""}
-              </span>
-            </>
-          ) : (
-            <span className="text-xs text-muted-foreground italic">No ticket types yet</span>
-          )}
+              </>
+            ) : (
+              <span className="text-xs text-muted-foreground italic">No ticket types yet</span>
+            )}
+          </div>
+          <div className="flex items-center gap-3 flex-shrink-0 ml-auto">
+            <span className="font-mono text-[10px] text-muted-foreground">{session.code ?? session.displayNo}</span>
+            {onEditSlot && (
+              <button
+                type="button"
+                aria-label="Edit slot"
+                title="Edit slot"
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  onEditSlot();
+                }}
+                onKeyDown={(ev) => ev.stopPropagation()}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-secondary cursor-pointer"
+              >
+                <Edit2 size={13} />
+              </button>
+            )}
+            <ChevronDown size={13} className={`text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />
+          </div>
         </div>
-        <div className="flex items-center gap-3 flex-shrink-0 ml-auto">
-          <span className="font-mono text-[10px] text-muted-foreground hidden md:block">{session.code ?? session.displayNo}</span>
-          {onEditSlot && (
-            <button
-              type="button"
-              aria-label="Edit slot"
-              title="Edit slot"
-              onClick={(ev) => {
-                ev.stopPropagation();
-                onEditSlot();
-              }}
-              onKeyDown={(ev) => ev.stopPropagation()}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-secondary cursor-pointer"
-            >
-              <Edit2 size={13} />
-            </button>
-          )}
-          <ChevronDown size={13} className={`text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />
-        </div>
-      </div>
+      </ScrollFade>
       {expanded && <TicketTypesTable ticketTypes={tts} ticketNos={ticketNos} editable={editable} onAddType={onAddType} onDeleteType={onDeleteType} onEditType={onEditType} />}
     </div>
   );
