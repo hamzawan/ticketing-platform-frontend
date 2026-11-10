@@ -2,9 +2,10 @@
 
 import { LoadError } from "@/components/organizer/load-error";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CalendarDays, CalendarPlus, Hash, Mail, RefreshCw, Ticket, User, X, type LucideIcon } from "lucide-react";
+import { CalendarPlus, Hash, Mail, RefreshCw, Ticket, User, X, type LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { TicketCard, TICKET_STATUS_STYLES } from "@/components/organizer/ticket-card";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { ACCESS_TOKEN_STORAGE_KEY, formatDateTime, getTickets, type TicketFilters, type TicketItem } from "@/lib/api";
 
@@ -12,56 +13,6 @@ function getStoredToken(): string | null {
   return typeof window !== "undefined" ? window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) : null;
 }
 
-const INPUT_CLASS = "bg-card border border-border rounded-xl px-3 py-2 text-sm outline-none focus:border-primary";
-
-// Local (not UTC) YYYY-MM-DD, matching what <input type="date"> expects.
-function todayLocal(): string {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-// Empty <input type="date"> renders blank on iOS Safari (and inconsistently on Android),
-// so while empty we hide the native text and overlay our own placeholder.
-function DateFilter({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <div className="flex-1 min-w-36 sm:flex-none">
-      <div className="relative">
-        <input
-          type="date"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          aria-label={label}
-          className={`${INPUT_CLASS} w-full min-w-0 min-h-9 appearance-none pr-9 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:opacity-0 ${value ? "" : "text-transparent"}`}
-        />
-        {/* Our own icon: iOS Safari drops the native indicator once appearance is reset. */}
-        <CalendarDays
-          aria-hidden="true"
-          className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-        />
-        {!value && (
-          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-base sm:text-sm text-muted-foreground">
-            {label}
-          </span>
-        )}
-      </div>
-      {/* Mobile native pickers (iOS/Android) have no Today/Clear, so provide our own. */}
-      <div className="mt-1 flex justify-between px-1 text-xs sm:hidden">
-        <button type="button" onClick={() => onChange(todayLocal())} className="text-primary">
-          Today
-        </button>
-        <button
-          type="button"
-          onClick={() => onChange("")}
-          disabled={!value}
-          className="text-muted-foreground disabled:opacity-40"
-        >
-          Clear
-        </button>
-      </div>
-    </div>
-  );
-}
 
 function TicketsSkeleton() {
   return (
@@ -249,13 +200,19 @@ export default function TicketsPage() {
           aria-label="Customer email"
           className="bg-card border border-border rounded-xl px-3 py-2 text-base sm:text-sm outline-none focus:border-primary flex-1 min-w-48"
         />
-        <DateFilter
-          label="Start date"
+        <DatePicker
+          className="flex-1 min-w-36 sm:flex-none"
+          placeholder="Start date"
+          ariaLabel="Start date"
+          max={draft.date_to || undefined}
           value={draft.date_from ?? ""}
           onChange={(v) => setDraft((d) => ({ ...d, date_from: v }))}
         />
-        <DateFilter
-          label="End date"
+        <DatePicker
+          className="flex-1 min-w-36 sm:flex-none"
+          placeholder="End date"
+          ariaLabel="End date"
+          min={draft.date_from || undefined}
           value={draft.date_to ?? ""}
           onChange={(v) => setDraft((d) => ({ ...d, date_to: v }))}
         />
