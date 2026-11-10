@@ -28,7 +28,7 @@ function show(value: string, placeholder: string): string {
 // A date field ("YYYY-MM-DD") whose popup is a month calendar with Today and Clear.
 // The native <input type="date"> popup is drawn by the browser: iOS and Android have
 // no Today/Clear there and a page can't add them, hence this component.
-// On phones the calendar opens as a bottom sheet; from `sm` up it sits under the field.
+// On phones the calendar opens as a centred modal; from `sm` up it sits under the field.
 // Dates outside min..max (same format, inclusive) are greyed out.
 export function DatePicker({
   value,
@@ -134,14 +134,14 @@ export function DatePicker({
         pos &&
         createPortal(
           <>
-            {/* Dimmed backdrop, phones only; the sheet below is pinned to the bottom edge. */}
+            {/* Dimmed backdrop, phones only; the calendar below is centred on screen. */}
             <div aria-hidden="true" className="fixed inset-0 z-[99] bg-black/40 sm:hidden" onClick={() => setOpen(false)} />
             <div
               ref={popupRef}
               role="dialog"
               aria-label={ariaLabel}
               style={{ top: pos.top, bottom: pos.bottom, left: pos.left }}
-              className="fixed z-[100] w-72 max-sm:!inset-x-0 max-sm:!top-auto max-sm:!bottom-0 max-sm:!left-0 max-sm:w-full max-sm:rounded-b-none max-sm:pb-[env(safe-area-inset-bottom)] rounded-xl border border-border bg-card shadow-lg"
+              className="fixed z-[100] w-72 max-sm:!top-1/2 max-sm:!bottom-auto max-sm:!left-1/2 max-sm:-translate-x-1/2 max-sm:-translate-y-1/2 max-sm:w-[calc(100vw-2rem)] max-sm:max-w-sm rounded-xl border border-border bg-card shadow-lg"
             >
               <div className="p-3">
                 <div className="flex items-center justify-between mb-2">
