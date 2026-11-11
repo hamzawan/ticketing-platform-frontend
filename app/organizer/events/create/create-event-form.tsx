@@ -25,7 +25,7 @@ type DraftTicketType = { id: string; sessionId: string; name: string; price: str
 const STEPS = ["Event Info", "Sessions", "Ticket Types", "Review"];
 
 const inp =
-  "w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground";
+  "w-full bg-background border border-border rounded-xl px-4 py-2.5 text-base sm:text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground";
 const lbl = "text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block";
 
 function parseAgeInput(value: string): number | null {
@@ -872,7 +872,7 @@ export function CreateEventForm({
                                     onChange={(e) => updateTicketType(tt.id, "name", e.target.value)}
                                     onBlur={() => touchTicket(tt.id, "name")}
                                     placeholder="e.g. General Admission"
-                                    className={"col-span-2 sm:col-span-1 bg-background border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground" + bad(!!te.name || (flagged && !!all.name))}
+                                    className={"col-span-2 sm:col-span-1 bg-background border border-border rounded-lg px-3 py-2 text-base sm:text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground" + bad(!!te.name || (flagged && !!all.name))}
                                   />
                                   <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs pointer-events-none">$</span>
@@ -881,7 +881,7 @@ export function CreateEventForm({
                                       onChange={(e) => updateTicketType(tt.id, "price", e.target.value)}
                                       onBlur={() => touchTicket(tt.id, "price")}
                                       placeholder="0"
-                                      className={"w-full bg-background border border-border rounded-lg pl-6 pr-3 py-2 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground" + bad(!!te.price || (flagged && !!all.price))}
+                                      className={"w-full bg-background border border-border rounded-lg pl-6 pr-3 py-2 text-base sm:text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground" + bad(!!te.price || (flagged && !!all.price))}
                                     />
                                   </div>
                                   <input
@@ -889,7 +889,7 @@ export function CreateEventForm({
                                     onChange={(e) => updateTicketType(tt.id, "qty", e.target.value)}
                                     onBlur={() => touchTicket(tt.id, "qty")}
                                     placeholder="100"
-                                    className={"w-full bg-background border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground" + bad(!!te.qty || (flagged && !!all.qty))}
+                                    className={"w-full bg-background border border-border rounded-lg px-3 py-2 text-base sm:text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground" + bad(!!te.qty || (flagged && !!all.qty))}
                                   />
                                   <button
                                     onClick={() => removeTicketType(tt.id)}
