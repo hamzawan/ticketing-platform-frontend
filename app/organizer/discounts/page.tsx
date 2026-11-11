@@ -27,7 +27,7 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { StatusBadge } from "@/components/ui/badge";
 
 const INPUT_CLASS =
-  "w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm outline-none focus:border-primary placeholder:text-muted-foreground disabled:opacity-60";
+  "w-full bg-background border border-border rounded-xl px-3 py-2.5 text-base sm:text-sm outline-none focus:border-primary placeholder:text-muted-foreground disabled:opacity-60";
 const LABEL_CLASS = "text-xs text-muted-foreground font-medium mb-1.5 block";
 
 function getToken(): string | null {

@@ -135,7 +135,7 @@ export function RefundsTable({
                           onChange={(e) => setRejectReason(e.target.value)}
                           disabled={busy}
                           placeholder="Reason for rejecting…"
-                          className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs outline-none focus:border-primary transition-colors placeholder:text-muted-foreground disabled:opacity-60"
+                          className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-base sm:text-xs outline-none focus:border-primary transition-colors placeholder:text-muted-foreground disabled:opacity-60"
                         />
                       )}
                       <div className="flex gap-1.5">
