@@ -17,6 +17,7 @@ import { RichTextEditor } from "@/components/organizer/rich-text-editor";
 import { todayInputValue } from "@/lib/date";
 import { isEmbedUrl, isShortUrl, MAP_URL_ERROR } from "@/lib/google-maps";
 import { TimePicker } from "@/components/ui/time-picker";
+import { DatePicker } from "@/components/ui/date-picker";
 import { ImageUploader, type UploadedImage } from "@/components/organizer/image-uploader";
 
 type DraftSession = { id: string; date: string; startTime: string; endTime: string };
@@ -737,7 +738,7 @@ export function CreateEventForm({
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
                         <label className={lbl}>Date</label>
-                        <input type="date" min={todayInputValue()} value={s.date} onChange={(e) => updateSession(s.id, "date", e.target.value)} className={`${inp} ${fe.date ? "border-red-400!" : ""}`} />
+                        <DatePicker min={todayInputValue()} value={s.date} onChange={(v) => updateSession(s.id, "date", v)} ariaLabel="Session date" className={fe.date ? "[&>button]:border-red-400!" : ""} />
                         {fe.date && <p className="text-[11px] text-red-600 mt-1.5">{fe.date}</p>}
                       </div>
                       <div>
@@ -771,11 +772,11 @@ export function CreateEventForm({
               >
                 <Plus size={14} /> Add Another Session
               </button>
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setStep(1)}
-                    className="flex items-center gap-2 border border-border font-semibold px-5 py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm"
+                    className="flex-1 sm:flex-none justify-center flex items-center gap-2 border border-border font-semibold px-4 sm:px-5 py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm"
                   >
                     <ArrowLeft size={14} /> Back
                   </button>
@@ -783,7 +784,7 @@ export function CreateEventForm({
                     <button
                       onClick={handleSaveDraft}
                       disabled={savingDraft}
-                      className="flex items-center gap-2 border border-border text-muted-foreground font-semibold px-5 py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
+                      className="flex-1 sm:flex-none justify-center flex items-center gap-2 border border-border text-muted-foreground font-semibold px-4 sm:px-5 py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm whitespace-nowrap disabled:opacity-60 disabled:pointer-events-none"
                     >
                       {savingDraft ? "Saving…" : "Save as Draft"}
                     </button>
@@ -802,7 +803,7 @@ export function CreateEventForm({
                     setExpandedSess(sessions.map((s) => s.id));
                     setStep(3);
                   }}
-                  className="flex items-center gap-2 bg-primary text-white font-semibold px-6 py-2.5 rounded-xl hover:bg-primary/90 transition-colors text-sm"
+                  className="w-full sm:w-auto justify-center flex items-center gap-2 bg-primary text-white font-semibold px-6 py-2.5 rounded-xl hover:bg-primary/90 transition-colors text-sm"
                 >
                   Next: Ticket Types <ChevronRight size={14} />
                 </button>
