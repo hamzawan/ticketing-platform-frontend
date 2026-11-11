@@ -867,7 +867,7 @@ export function CreateEventForm({
                                 const bad = (k: boolean) => (k ? " border-red-400!" : "");
                                 return (
                                 <div key={tt.id}>
-                                <div className="grid grid-cols-2 sm:grid-cols-[1fr_90px_90px_32px] gap-3 items-center">
+                                <div className="grid grid-cols-[1fr_1fr_32px] sm:grid-cols-[1fr_90px_90px_32px] gap-3 items-center">
                                   <input
                                     value={tt.name}
                                     onChange={(e) => updateTicketType(tt.id, "name", e.target.value)}
@@ -896,7 +896,7 @@ export function CreateEventForm({
                                     onClick={() => removeTicketType(tt.id)}
                                     disabled={sessTickets.length <= 1}
                                     title={sessTickets.length <= 1 ? "Each session needs at least one ticket type" : undefined}
-                                    className="text-muted-foreground hover:text-red-500 transition-colors flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-muted-foreground"
+                                    className="col-start-3 row-start-1 sm:col-auto sm:row-auto text-muted-foreground hover:text-red-500 transition-colors flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-muted-foreground"
                                     aria-label="Remove ticket type"
                                   >
                                     <X size={13} />
