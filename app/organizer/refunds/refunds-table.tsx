@@ -82,7 +82,7 @@ export function RefundsTable({
               <tr key={request.id} className={`transition-colors ${confirming ? "bg-amber-50" : "hover:bg-secondary/20"}`}>
                 <td className="px-5 py-4">
                   <div className="text-xs font-semibold">{request.customer_name}</div>
-                  <div className="text-xs text-muted-foreground">{request.customer_email}</div>
+                  <div className="text-xs text-muted-foreground [&_a]:text-inherit [&_a]:no-underline [&_a]:[font:inherit]">{request.customer_email}</div>
                 </td>
                 <td className="px-5 py-4 text-xs text-muted-foreground max-w-36 truncate" title={request.event_name}>
                   {request.event_name}
