@@ -2,7 +2,7 @@
 
 import { LoadError } from "@/components/organizer/load-error";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CalendarPlus, Hash, Mail, RefreshCw, Ticket, User, X, type LucideIcon } from "lucide-react";
+import { CalendarPlus, Mail, RefreshCw, Ticket, User, X, type LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { TicketCard, TICKET_STATUS_STYLES } from "@/components/organizer/ticket-card";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -24,7 +24,7 @@ function TicketsSkeleton() {
   );
 }
 
-function Row({ icon: Icon, label, value, mono }: { icon: LucideIcon; label: string; value: string; mono?: boolean }) {
+function Row({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
   return (
     <div className="flex items-start gap-3">
       <span className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-accent" style={{ color: "var(--sidebar)" }}>
@@ -32,7 +32,7 @@ function Row({ icon: Icon, label, value, mono }: { icon: LucideIcon; label: stri
       </span>
       <div className="min-w-0">
         <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</dt>
-        <dd className={`text-sm font-medium break-all ${mono ? "font-mono text-xs" : ""}`}>{value}</dd>
+        <dd className="text-sm font-medium break-all">{value}</dd>
       </div>
     </div>
   );
@@ -84,8 +84,6 @@ function TicketDialog({ ticket, onClose }: { ticket: TicketItem; onClose: () => 
         <dl className="space-y-4 p-5">
           {ticket.user_name && <Row icon={User} label="Name" value={ticket.user_name} />}
           {ticket.user_email && <Row icon={Mail} label="Email" value={ticket.user_email} />}
-          <Row icon={Hash} label="Ticket ID" value={ticket.id} mono />
-          <Row icon={Hash} label="Booking ID" value={ticket.booking_id} mono />
           <Row icon={CalendarPlus} label="Created" value={created} />
           <Row icon={RefreshCw} label="Updated" value={updated} />
         </dl>
