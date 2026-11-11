@@ -213,6 +213,7 @@ function InputField({
   rightSlot,
   labelAdornment,
   error,
+  required,
 }: {
   label: string;
   id: string;
@@ -224,12 +225,14 @@ function InputField({
   rightSlot?: React.ReactNode;
   labelAdornment?: React.ReactNode;
   error?: string;
+  required?: boolean;
 }) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-1.5">
         <label htmlFor={id} className="block text-xs font-semibold uppercase tracking-wide text-foreground">
           {label}
+          {required && <span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span>}
         </label>
         {labelAdornment}
       </div>
@@ -584,6 +587,7 @@ export default function OrganizerAuthPage() {
               <form onSubmit={handleSignup} className="space-y-4">
                 <InputField
                   label="Email Address"
+                  required
                   id="su-email"
                   type="email"
                   placeholder="you@example.com"
@@ -594,6 +598,7 @@ export default function OrganizerAuthPage() {
                 />
                 <InputField
                   label="Password"
+                  required
                   id="su-pw1"
                   type={showSuPw1 ? "text" : "password"}
                   placeholder="••••••••"
@@ -607,6 +612,7 @@ export default function OrganizerAuthPage() {
                 {suPw1 && <PasswordChecklist password={suPw1} />}
                 <InputField
                   label="Confirm Password"
+                  required
                   id="su-pw2"
                   type={showSuPw2 ? "text" : "password"}
                   placeholder="••••••••"
@@ -710,6 +716,7 @@ export default function OrganizerAuthPage() {
               <form onSubmit={handleLogin} className="space-y-4">
                 <InputField
                   label="Email Address"
+                  required
                   id="li-email"
                   type="email"
                   placeholder="you@example.com"
@@ -721,7 +728,7 @@ export default function OrganizerAuthPage() {
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <label htmlFor="li-pw" className="text-xs font-semibold uppercase tracking-wide text-foreground">
-                      Password
+                      Password<span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span>
                     </label>
                     <button
                       type="button"

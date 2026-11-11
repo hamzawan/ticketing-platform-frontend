@@ -75,11 +75,11 @@ function AddOnFormModal({
       submitLabel={addOn ? "Save Changes" : "Create Add-on"}
     >
       <div>
-        <label className={lbl}>Name</label>
+        <label className={lbl}>Name<span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. VIP Parking" className={inp} autoFocus />
       </div>
       <div>
-        <label className={lbl}>Price ($)</label>
+        <label className={lbl}>Price ($)<span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
         <input value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" placeholder="e.g. 25" className={inp} />
       </div>
       <div>

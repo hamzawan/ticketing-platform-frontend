@@ -368,7 +368,7 @@ function TicketFields({ value, onChange, autoFocus, priceLocked }: { value: Tick
   return (
     <>
       <div>
-        <label className={lbl}>Name</label>
+        <label className={lbl}>Name<span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
         <input
           value={value.name}
           onChange={(e) => onChange({ ...value, name: e.target.value })}
@@ -379,7 +379,7 @@ function TicketFields({ value, onChange, autoFocus, priceLocked }: { value: Tick
       </div>
       <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3">
         <div>
-          <label className={lbl}>Price ($)</label>
+          <label className={lbl}>Price ($)<span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
           <input
             type="number"
             min="0"
@@ -394,7 +394,7 @@ function TicketFields({ value, onChange, autoFocus, priceLocked }: { value: Tick
           {priceLocked && <p className="mt-1 text-[11px] text-muted-foreground">Price is locked while the event is on sale.</p>}
         </div>
         <div>
-          <label className={lbl}>Quantity</label>
+          <label className={lbl}>Quantity<span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
           <input
             type="number"
             min="1"
@@ -446,12 +446,12 @@ function AddSlotModal({
   return (
     <ModalShell title="Add Slot" saving={saving} error={localError ?? error} onClose={onClose} onSubmit={submit} submitLabel="Add Slot">
       <div>
-        <label className={lbl}>Date</label>
+        <label className={lbl}>Date<span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
         <DatePicker min={todayInputValue()} value={date} onChange={setDate} ariaLabel="Slot date" />
       </div>
       <div className="grid grid-cols-1 min-[360px]:grid-cols-2 gap-3">
         <div>
-          <label className={lbl}>Start Time</label>
+          <label className={lbl}>Start Time<span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
           <TimePicker
             value={startTime}
             onChange={(v) => {
@@ -463,7 +463,7 @@ function AddSlotModal({
           />
         </div>
         <div>
-          <label className={lbl}>End Time</label>
+          <label className={lbl}>End Time<span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
           <TimePicker value={endTime} onChange={(v) => !(startTime && v <= startTime) && setEndTime(v)} minTime={startTime || undefined} ariaLabel="End time" />
         </div>
       </div>
@@ -507,12 +507,12 @@ function EditSlotModal({
   return (
     <ModalShell title="Edit Slot" saving={saving} error={localError ?? error} onClose={onClose} onSubmit={submit} submitLabel="Save Changes">
       <div>
-        <label className={lbl}>Date</label>
+        <label className={lbl}>Date<span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
         <DatePicker min={todayInputValue()} value={date} onChange={setDate} ariaLabel="Slot date" />
       </div>
       <div className="grid grid-cols-1 min-[360px]:grid-cols-2 gap-3">
         <div>
-          <label className={lbl}>Start Time</label>
+          <label className={lbl}>Start Time<span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
           <TimePicker
             value={startTime}
             onChange={(v) => {
@@ -523,7 +523,7 @@ function EditSlotModal({
           />
         </div>
         <div>
-          <label className={lbl}>End Time</label>
+          <label className={lbl}>End Time<span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
           <TimePicker value={endTime} onChange={(v) => !(startTime && v <= startTime) && setEndTime(v)} minTime={startTime || undefined} ariaLabel="End time" />
         </div>
       </div>

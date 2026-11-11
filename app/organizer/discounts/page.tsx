@@ -318,7 +318,7 @@ export default function DiscountsPage() {
           <h3 className="font-bold text-sm font-(family-name:--font-display)">Create Discount Code</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className={LABEL_CLASS}>Event</label>
+              <label className={LABEL_CLASS}>Event<span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
               <Select
                 value={eventId}
                 onChange={handleEventChange}
@@ -328,7 +328,7 @@ export default function DiscountsPage() {
               />
             </div>
             <div>
-              <label className={LABEL_CLASS}>Session</label>
+              <label className={LABEL_CLASS}>Session<span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
               <Select
                 value={sessionId}
                 onChange={handleSessionChange}
@@ -342,7 +342,7 @@ export default function DiscountsPage() {
               />
             </div>
             <div className="sm:col-span-2">
-              <label className={LABEL_CLASS}>Ticket Type</label>
+              <label className={LABEL_CLASS}>Ticket Type<span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
               <Select
                 value={ticketTypeId}
                 onChange={setTicketTypeId}
@@ -353,7 +353,7 @@ export default function DiscountsPage() {
               />
             </div>
             <div>
-              <label className={LABEL_CLASS}>Code</label>
+              <label className={LABEL_CLASS}>Code<span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
               <input
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
@@ -362,7 +362,7 @@ export default function DiscountsPage() {
               />
             </div>
             <div>
-              <label className={LABEL_CLASS}>Discount Type</label>
+              <label className={LABEL_CLASS}>Discount Type<span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
               <Select
                 value={type}
                 onChange={(v) => setType(v as DiscountType)}
@@ -374,19 +374,19 @@ export default function DiscountsPage() {
               />
             </div>
             <div>
-              <label className={LABEL_CLASS}>Value</label>
+              <label className={LABEL_CLASS}>Value<span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
               <input value={value} onChange={(e) => setValue(e.target.value)} inputMode="decimal" placeholder="e.g. 20" className={INPUT_CLASS} />
             </div>
             <div>
-              <label className={LABEL_CLASS}>Max Uses</label>
+              <label className={LABEL_CLASS}>Max Uses<span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
               <input value={maxUses} onChange={(e) => setMaxUses(e.target.value)} inputMode="numeric" placeholder="e.g. 100" className={INPUT_CLASS} />
             </div>
             <div>
-              <label className={LABEL_CLASS}>Start Date &amp; Time</label>
+              <label className={LABEL_CLASS}>Start Date &amp; Time<span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
               <DateTimePicker value={startAt} onChange={handleStartChange} min={eventRange?.min} max={startMax} disabled={!sessionId} ariaLabel="Start date and time" />
             </div>
             <div>
-              <label className={LABEL_CLASS}>End Date &amp; Time</label>
+              <label className={LABEL_CLASS}>End Date &amp; Time<span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
               <DateTimePicker value={endAt} onChange={setEndAt} min={endMin} max={eventRange?.max} alignRight disabled={!sessionId} ariaLabel="End date and time" />
               {eventRange && (
                 <p className="text-[11px] text-muted-foreground mt-1.5">
