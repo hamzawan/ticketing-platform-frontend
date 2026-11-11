@@ -537,7 +537,7 @@ export function CreateEventForm({
               <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
                 <h3 className="font-bold font-(family-name:--font-display)">Event Information</h3>
                 <div>
-                  <label className={lbl}>Event Name</label>
+                  <label className={lbl}>Event Name <span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
                   <input
                     value={form.name}
                     onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
@@ -548,7 +548,7 @@ export function CreateEventForm({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className={lbl}>Venue</label>
+                    <label className={lbl}>Venue <span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
                     <input
                       value={form.venue}
                       onChange={(e) => setForm((f) => ({ ...f, venue: e.target.value }))}
@@ -615,7 +615,7 @@ export function CreateEventForm({
                   </p>
                 </div>
                 <div>
-                  <label className={lbl}>Full Address</label>
+                  <label className={lbl}>Full Address <span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
                   <input
                     value={form.address}
                     onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
@@ -625,7 +625,7 @@ export function CreateEventForm({
                   {showErrors[1] && infoErrors.address && <p className="text-[11px] text-red-600 mt-1.5">{infoErrors.address}</p>}
                 </div>
                 <div>
-                  <label className={lbl}>Google Maps Link</label>
+                  <label className={lbl}>Google Maps Link <span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
                   <input
                     value={form.mapUrl}
                     onChange={(e) => handleMapUrlChange(e.target.value)}
@@ -737,12 +737,12 @@ export function CreateEventForm({
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
-                        <label className={lbl}>Date</label>
+                        <label className={lbl}>Date <span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
                         <DatePicker min={todayInputValue()} value={s.date} onChange={(v) => updateSession(s.id, "date", v)} ariaLabel="Session date" className={fe.date ? "[&>button]:border-red-400!" : ""} />
                         {fe.date && <p className="text-[11px] text-red-600 mt-1.5">{fe.date}</p>}
                       </div>
                       <div>
-                        <label className={lbl}>Start Time</label>
+                        <label className={lbl}>Start Time <span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
                         <TimePicker
                           value={s.startTime}
                           onChange={(v) => {
@@ -756,7 +756,7 @@ export function CreateEventForm({
                         {fe.startTime && <p className="text-[11px] text-red-600 mt-1.5">{fe.startTime}</p>}
                       </div>
                       <div>
-                        <label className={lbl}>End Time</label>
+                        <label className={lbl}>End Time <span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
                         <TimePicker value={s.endTime} onChange={(v) => !(s.startTime && v <= s.startTime) && updateSession(s.id, "endTime", v)} minTime={s.startTime || undefined} invalid={!!fe.endTime} ariaLabel="End time" />
                         {fe.endTime && <p className="text-[11px] text-red-600 mt-1.5">{fe.endTime}</p>}
                       </div>
@@ -855,7 +855,7 @@ export function CreateEventForm({
                               <div className="hidden sm:grid grid-cols-[1fr_90px_90px_32px] gap-3">
                                 {["Ticket Name", "Price", "Qty", ""].map((h) => (
                                   <span key={h} className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                                    {h}
+                                    {h}{h && <span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span>}
                                   </span>
                                 ))}
                               </div>
@@ -868,13 +868,18 @@ export function CreateEventForm({
                                 return (
                                 <div key={tt.id}>
                                 <div className="grid grid-cols-[1fr_1fr_32px] sm:grid-cols-[1fr_90px_90px_32px] gap-3 items-center">
+                                  <label className="col-span-2 sm:col-span-1 block">
+                                  <span className="sm:hidden mb-1 block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Ticket Name<span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></span>
                                   <input
                                     value={tt.name}
                                     onChange={(e) => updateTicketType(tt.id, "name", e.target.value)}
                                     onBlur={() => touchTicket(tt.id, "name")}
                                     placeholder="e.g. General Admission"
-                                    className={"col-span-2 sm:col-span-1 bg-background border border-border rounded-lg px-3 py-2 text-base sm:text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground" + bad(!!te.name || (flagged && !!all.name))}
+                                    className={"w-full bg-background border border-border rounded-lg px-3 py-2 text-base sm:text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground" + bad(!!te.name || (flagged && !!all.name))}
                                   />
+                                  </label>
+                                  <label className="block">
+                                  <span className="sm:hidden mb-1 block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Price<span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></span>
                                   <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs pointer-events-none">$</span>
                                     <input
@@ -885,6 +890,9 @@ export function CreateEventForm({
                                       className={"w-full bg-background border border-border rounded-lg pl-6 pr-3 py-2 text-base sm:text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground" + bad(!!te.price || (flagged && !!all.price))}
                                     />
                                   </div>
+                                  </label>
+                                  <label className="block">
+                                  <span className="sm:hidden mb-1 block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Qty<span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></span>
                                   <input
                                     value={tt.qty}
                                     onChange={(e) => updateTicketType(tt.id, "qty", e.target.value)}
@@ -892,11 +900,12 @@ export function CreateEventForm({
                                     placeholder="100"
                                     className={"w-full bg-background border border-border rounded-lg px-3 py-2 text-base sm:text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground" + bad(!!te.qty || (flagged && !!all.qty))}
                                   />
+                                  </label>
                                   <button
                                     onClick={() => removeTicketType(tt.id)}
                                     disabled={sessTickets.length <= 1}
                                     title={sessTickets.length <= 1 ? "Each session needs at least one ticket type" : undefined}
-                                    className="col-start-3 row-start-1 sm:col-auto sm:row-auto text-muted-foreground hover:text-red-500 transition-colors flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-muted-foreground"
+                                    className="col-start-3 row-start-1 self-end h-[42px] sm:self-center sm:h-auto sm:col-auto sm:row-auto text-muted-foreground hover:text-red-500 transition-colors flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-muted-foreground"
                                     aria-label="Remove ticket type"
                                   >
                                     <X size={13} />
