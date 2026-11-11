@@ -923,11 +923,11 @@ export function CreateEventForm({
 
               {(ticketAddError ?? ticketsError ?? error) && <div data-form-error className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-4 py-3">{ticketAddError ?? ticketsError ?? error}</div>}
 
-              <div className="flex items-center justify-between gap-3 pt-1">
+              <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setStep(2)}
-                    className="flex items-center gap-2 border border-border font-semibold px-5 py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm"
+                    className="flex-1 sm:flex-none justify-center flex items-center gap-2 border border-border font-semibold px-4 sm:px-5 py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm"
                   >
                     <ArrowLeft size={14} /> Back
                   </button>
@@ -935,7 +935,7 @@ export function CreateEventForm({
                     <button
                       onClick={handleSaveDraft}
                       disabled={savingDraft}
-                      className="flex items-center gap-2 border border-border text-muted-foreground font-semibold px-5 py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
+                      className="flex-1 sm:flex-none justify-center flex items-center gap-2 border border-border text-muted-foreground font-semibold px-4 sm:px-5 py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm whitespace-nowrap disabled:opacity-60 disabled:pointer-events-none"
                     >
                       {savingDraft ? "Saving…" : "Save as Draft"}
                     </button>
@@ -944,7 +944,7 @@ export function CreateEventForm({
                 <button
                   onClick={isEditMode ? goToReviewStep : handleCreateEvent}
                   disabled={submitting}
-                  className="flex items-center gap-2 bg-primary text-white font-semibold px-6 py-2.5 rounded-xl hover:bg-primary/90 transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
+                  className="w-full sm:w-auto justify-center flex items-center gap-2 bg-primary text-white font-semibold px-6 py-2.5 rounded-xl hover:bg-primary/90 transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
                 >
                   {isEditMode ? "Review Changes" : submitting ? "Creating…" : "Review & Publish"} <ChevronRight size={14} />
                 </button>
