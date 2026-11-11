@@ -1084,19 +1084,19 @@ export function CreateEventForm({
 
               {error && <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-4 py-3">{error}</div>}
 
-              <div className="flex items-center justify-between gap-3 pt-1">
+              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 pt-1">
                 <button
                   onClick={() => setStep(3)}
-                  className="flex items-center gap-2 border border-border font-semibold px-5 py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm"
+                  className="order-2 sm:order-none flex-1 sm:flex-none justify-center flex items-center gap-2 border border-border font-semibold px-4 sm:px-5 py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm"
                 >
                   <ArrowLeft size={14} /> Back
                 </button>
-                <div className="flex items-center gap-2">
+                <div className="contents sm:flex sm:items-center sm:gap-2">
                   {!isEditMode && (
                     <button
                       onClick={handleSaveDraft}
                       disabled={savingDraft}
-                      className="flex items-center gap-2 border border-border text-muted-foreground font-semibold px-5 py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
+                      className="order-2 sm:order-none flex-1 sm:flex-none justify-center flex items-center gap-2 border border-border text-muted-foreground font-semibold px-4 sm:px-5 py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
                     >
                       {savingDraft ? "Saving…" : "Save as Draft"}
                     </button>
@@ -1105,7 +1105,7 @@ export function CreateEventForm({
                     <button
                       onClick={handleUpdateEvent}
                       disabled={submitting}
-                      className="flex items-center gap-2 border border-border text-muted-foreground font-semibold px-5 py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
+                      className="order-2 sm:order-none flex-1 sm:flex-none justify-center flex items-center gap-2 border border-border text-muted-foreground font-semibold px-4 sm:px-5 py-2.5 rounded-xl hover:bg-secondary transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
                     >
                       {submitting ? "Saving…" : "Save Changes"}
                     </button>
@@ -1113,7 +1113,7 @@ export function CreateEventForm({
                   <button
                     onClick={isDraftEdit ? handleUpdateAndPublish : isEditMode ? handleUpdateEvent : createdEvent ? handlePublishEvent : handleCreateEvent}
                     disabled={submitting}
-                    className="flex items-center gap-2 bg-emerald-500 text-white font-bold px-8 py-2.5 rounded-xl hover:bg-emerald-600 transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
+                    className="order-1 sm:order-none w-full sm:w-auto justify-center flex items-center gap-2 bg-emerald-500 text-white font-bold px-8 py-2.5 rounded-xl hover:bg-emerald-600 transition-colors text-sm disabled:opacity-60 disabled:pointer-events-none"
                   >
                     <Check size={14} />
                     {isEditMode && !isDraftEdit ? (submitting ? "Saving…" : "Save Changes") : submitting ? "Publishing…" : "Publish Event"}
