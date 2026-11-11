@@ -16,6 +16,7 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   title: "Big Bounce America · Ticketing Platform",
   description: "Organizer portal for the Big Bounce America ticketing platform.",
+  formatDetection: { email: false, telephone: false, address: false },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
