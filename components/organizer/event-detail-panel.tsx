@@ -7,6 +7,7 @@ import { ArrowLeft, BookOpen, CheckCircle, ChevronDown, ChevronRight, Edit2, Map
 import { StatusBadge } from "@/components/ui/badge";
 import { ScrollFade } from "@/components/ui/scroll-fade";
 import { TimePicker } from "@/components/ui/time-picker";
+import { DatePicker } from "@/components/ui/date-picker";
 import { ModalShell } from "@/components/organizer/modal-shell";
 import { EventAddOns } from "@/components/organizer/event-addons";
 import {
@@ -446,7 +447,7 @@ function AddSlotModal({
     <ModalShell title="Add Slot" saving={saving} error={localError ?? error} onClose={onClose} onSubmit={submit} submitLabel="Add Slot">
       <div>
         <label className={lbl}>Date</label>
-        <input type="date" min={todayInputValue()} value={date} onChange={(e) => setDate(e.target.value)} className={inp} />
+        <DatePicker min={todayInputValue()} value={date} onChange={setDate} ariaLabel="Slot date" />
       </div>
       <div className="grid grid-cols-1 min-[360px]:grid-cols-2 gap-3">
         <div>
@@ -507,7 +508,7 @@ function EditSlotModal({
     <ModalShell title="Edit Slot" saving={saving} error={localError ?? error} onClose={onClose} onSubmit={submit} submitLabel="Save Changes">
       <div>
         <label className={lbl}>Date</label>
-        <input type="date" min={todayInputValue()} value={date} onChange={(e) => setDate(e.target.value)} className={inp} />
+        <DatePicker min={todayInputValue()} value={date} onChange={setDate} ariaLabel="Slot date" />
       </div>
       <div className="grid grid-cols-1 min-[360px]:grid-cols-2 gap-3">
         <div>
