@@ -9,7 +9,10 @@ import {
   createEvent,
   publishEvent,
   extractImageUrl,
+  getStates,
+  getTimezones,
   updateEvent,
+  type StateOption,
   type CreateEventPayload,
   type OrganizerEvent,
 } from "@/lib/api";
@@ -18,6 +21,8 @@ import { todayInputValue } from "@/lib/date";
 import { isEmbedUrl, isShortUrl, MAP_URL_ERROR } from "@/lib/google-maps";
 import { TimePicker } from "@/components/ui/time-picker";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Select } from "@/components/ui/select";
+import { CitySelect } from "@/components/ui/city-select";
 import { ImageUploader, type UploadedImage } from "@/components/organizer/image-uploader";
 
 type DraftSession = { id: string; date: string; startTime: string; endTime: string };
@@ -97,13 +102,28 @@ export function CreateEventForm({
   const [form, setForm] = useState({
     name: initialEvent?.name ?? "",
     venue: initialEvent?.venue ?? "",
+    state: initialEvent?.state ?? "",
     city: initialEvent?.city ?? "",
+    timezone: initialEvent?.timezone ?? "",
     description: initialEvent?.description ?? "",
     address: initialEvent?.address ?? "",
     mapUrl: initialEvent?.map_url ?? "",
     minAge: initialEvent?.min_age != null ? String(initialEvent.min_age) : "",
     maxAge: initialEvent?.max_age != null ? String(initialEvent.max_age) : "",
   });
+
+  // State and timezone options come from the API; cities depend on the chosen state (see CitySelect).
+  const [states, setStates] = useState<StateOption[]>([]);
+  const [timezones, setTimezones] = useState<string[]>([]);
+  const [locationLoadError, setLocationLoadError] = useState<string | null>(null);
+  useEffect(() => {
+    Promise.all([getStates(), getTimezones()])
+      .then(([st, tz]) => {
+        setStates(st);
+        setTimezones(tz);
+      })
+      .catch(() => setLocationLoadError("Couldn't load states and timezones. Refresh the page to try again."));
+  }, []);
 
   const firstSessionId = "s0";
   const [sessions, setSessions] = useState<DraftSession[]>([
@@ -262,9 +282,12 @@ export function CreateEventForm({
     }, 50);
   }
 
-  const infoErrors: { name?: string; venue?: string; minAge?: string; maxAge?: string; address?: string; map?: string } = {};
+  const infoErrors: { name?: string; venue?: string; state?: string; city?: string; timezone?: string; minAge?: string; maxAge?: string; address?: string; map?: string } = {};
   if (!form.name.trim()) infoErrors.name = "Event name is required.";
   if (!form.venue.trim()) infoErrors.venue = "Venue is required.";
+  if (!form.state) infoErrors.state = "State is required.";
+  if (!form.city.trim()) infoErrors.city = "City is required.";
+  if (!form.timezone) infoErrors.timezone = "Timezone is required.";
   const minAge = parseAgeInput(form.minAge);
   const maxAge = parseAgeInput(form.maxAge);
   if (form.minAge.trim() && (minAge === null || minAge < 0)) infoErrors.minAge = "Enter a valid age.";
@@ -359,6 +382,8 @@ export function CreateEventForm({
         : null,
       description: form.description.trim() || null,
       city: form.city.trim() || null,
+      state: form.state || null,
+      timezone: form.timezone || null,
       address: form.address.trim() || null,
       map_url: isEmbedUrl(form.mapUrl.trim()) ? form.mapUrl.trim() : null,
       min_age: parseAgeInput(form.minAge),
@@ -546,27 +571,54 @@ export function CreateEventForm({
                   />
                   {showErrors[1] && infoErrors.name && <p className="text-[11px] text-red-600 mt-1.5">{infoErrors.name}</p>}
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className={lbl}>Venue <span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
+                  <input
+                    value={form.venue}
+                    onChange={(e) => setForm((f) => ({ ...f, venue: e.target.value }))}
+                    placeholder="e.g. Houston Bounce Arena"
+                    className={`${inp} ${showErrors[1] && infoErrors.venue ? "border-red-400!" : ""}`}
+                  />
+                  {showErrors[1] && infoErrors.venue && <p className="text-[11px] text-red-600 mt-1.5">{infoErrors.venue}</p>}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className={lbl}>Venue <span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
-                    <input
-                      value={form.venue}
-                      onChange={(e) => setForm((f) => ({ ...f, venue: e.target.value }))}
-                      placeholder="e.g. Houston Bounce Arena"
-                      className={`${inp} ${showErrors[1] && infoErrors.venue ? "border-red-400!" : ""}`}
+                    <label className={lbl}>State <span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
+                    <Select
+                      value={form.state}
+                      // City options belong to the state, so changing it clears the city.
+                      onChange={(v) => setForm((f) => (f.state === v ? f : { ...f, state: v, city: "" }))}
+                      options={states.map((st) => ({ value: st.code, label: st.name }))}
+                      placeholder="Select state"
+                      ariaLabel="State"
+                      className={showErrors[1] && infoErrors.state ? "[&>button]:border-red-400!" : ""}
                     />
-                    {showErrors[1] && infoErrors.venue && <p className="text-[11px] text-red-600 mt-1.5">{infoErrors.venue}</p>}
+                    {showErrors[1] && infoErrors.state && <p className="text-[11px] text-red-600 mt-1.5">{infoErrors.state}</p>}
                   </div>
                   <div>
-                    <label className={lbl}>City</label>
-                    <input
+                    <label className={lbl}>City <span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
+                    <CitySelect
+                      state={form.state}
                       value={form.city}
-                      onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
-                      placeholder="e.g. Houston, TX"
-                      className={inp}
+                      onChange={(v) => setForm((f) => ({ ...f, city: v }))}
+                      invalid={showErrors[1] && !!infoErrors.city}
                     />
+                    {showErrors[1] && infoErrors.city && <p className="text-[11px] text-red-600 mt-1.5">{infoErrors.city}</p>}
+                  </div>
+                  <div>
+                    <label className={lbl}>Timezone <span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
+                    <Select
+                      value={form.timezone}
+                      onChange={(v) => setForm((f) => ({ ...f, timezone: v }))}
+                      options={timezones.map((tz) => ({ value: tz, label: tz.replace(/_/g, " ") }))}
+                      placeholder="Select timezone"
+                      ariaLabel="Timezone"
+                      className={showErrors[1] && infoErrors.timezone ? "[&>button]:border-red-400!" : ""}
+                    />
+                    {showErrors[1] && infoErrors.timezone && <p className="text-[11px] text-red-600 mt-1.5">{infoErrors.timezone}</p>}
                   </div>
                 </div>
+                {locationLoadError && <p className="text-[11px] text-red-600">{locationLoadError}</p>}
                 <div>
                   <label className={lbl}>Description</label>
                   <RichTextEditor
@@ -975,10 +1027,10 @@ export function CreateEventForm({
                   <div className="text-base font-bold font-(family-name:--font-display)">
                     {form.name || <span className="text-muted-foreground font-normal italic text-sm">No name set</span>}
                   </div>
-                  {(form.venue || form.city) && (
+                  {(form.venue || form.city || form.state) && (
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
                       <MapPin size={11} />
-                      {[form.venue, form.city].filter(Boolean).join(", ")}
+                      {[form.venue, form.city, form.state].filter(Boolean).join(", ")}
                     </div>
                   )}
                   {form.description && form.description !== "<p></p>" && (
