@@ -318,6 +318,8 @@ export type OrganizerEvent = {
   description: string;
   venue: string;
   city: string | null;
+  state?: string | null;
+  timezone?: string | null;
   address?: string | null;
   map_url?: string | null;
   event_date: string;
@@ -408,6 +410,35 @@ export async function getMyEvents(token?: string | null, page = 1): Promise<MyEv
   return res.json() as Promise<MyEventsListResponse>;
 }
 
+export type StateOption = { name: string; code: string };
+
+async function getJson<T>(path: string, fallback: string): Promise<T> {
+  const res = await fetch(`${API_BASE_URL}${path}`, { headers: { Accept: "application/json" } });
+  if (!res.ok) throw new ApiError(await readErrorDetail(res, fallback), res.status);
+  return res.json() as Promise<T>;
+}
+
+export async function getStates(): Promise<StateOption[]> {
+  const data = await getJson<{ states: StateOption[] }>("/api/v1/states/list/", "Failed to load states.");
+  return data.states;
+}
+
+export async function getTimezones(): Promise<string[]> {
+  const data = await getJson<{ timezones: string[] }>("/api/v1/timezones/list/", "Failed to load timezones.");
+  return data.timezones;
+}
+
+// Cities are paginated (max 100 per page, thousands per state), so the picker
+// searches server-side instead of loading them all. `state` is a 2-letter code.
+export async function getCities(state: string, search = "", signal?: AbortSignal): Promise<string[]> {
+  const params = new URLSearchParams({ state, page_size: "100" });
+  if (search.trim()) params.set("search", search.trim());
+  const res = await fetch(`${API_BASE_URL}/api/v1/cities/list/?${params}`, { headers: { Accept: "application/json" }, signal });
+  if (!res.ok) throw new ApiError(await readErrorDetail(res, "Failed to load cities."), res.status);
+  const data = (await res.json()) as { results: { name: string }[] };
+  return data.results.map((c) => c.name);
+}
+
 export type CreateEventPayload = {
   name: string;
   venue: string;
@@ -418,6 +449,8 @@ export type CreateEventPayload = {
   sessions: string | null;
   description: string | null;
   city: string | null;
+  state?: string | null;
+  timezone?: string | null;
   address: string | null;
   map_url: string | null;
   min_age: number | null;
@@ -442,6 +475,8 @@ function buildEventFormData(payload: CreateEventPayload): FormData {
   if (payload.sessions) body.append("sessions", payload.sessions);
   if (payload.description) body.append("description", payload.description);
   if (payload.city) body.append("city", payload.city);
+  if (payload.state) body.append("state", payload.state);
+  if (payload.timezone) body.append("timezone", payload.timezone);
   if (payload.address) body.append("address", payload.address);
   if (payload.map_url) body.append("map_url", payload.map_url);
   if (payload.min_age != null) body.append("min_age", String(payload.min_age));
@@ -671,6 +706,8 @@ export async function saveEventSessions(
         : null,
       description: event.description || null,
       city: event.city || null,
+      state: event.state || null,
+      timezone: event.timezone || null,
       address: event.address || null,
       map_url: event.map_url || null,
       min_age: event.min_age,
