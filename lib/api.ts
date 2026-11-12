@@ -439,6 +439,20 @@ export async function getCities(state: string, search = "", signal?: AbortSignal
   return data.results.map((c) => c.name);
 }
 
+// Timezones of the US places named `city` in `stateName`, from the free
+// Open-Meteo geocoder (our cities API has no timezone data). A name can match
+// several places, so this returns every distinct IANA zone found.
+export async function getCityTimezones(city: string, stateName: string, signal?: AbortSignal): Promise<string[]> {
+  const params = new URLSearchParams({ name: city, count: "100", language: "en", format: "json", countryCode: "US" });
+  const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?${params}`, { signal });
+  if (!res.ok) throw new ApiError("Failed to look up the city's timezone.", res.status);
+  const data = (await res.json()) as { results?: { name: string; admin1?: string; timezone?: string }[] };
+  const zones = (data.results ?? [])
+    .filter((r) => r.timezone && r.admin1?.toLowerCase() === stateName.toLowerCase() && r.name.toLowerCase() === city.toLowerCase())
+    .map((r) => r.timezone as string);
+  return [...new Set(zones)];
+}
+
 export type CreateEventPayload = {
   name: string;
   venue: string;

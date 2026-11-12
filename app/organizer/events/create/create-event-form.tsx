@@ -9,6 +9,7 @@ import {
   createEvent,
   publishEvent,
   extractImageUrl,
+  getCityTimezones,
   getStates,
   getTimezones,
   updateEvent,
@@ -23,6 +24,7 @@ import { TimePicker } from "@/components/ui/time-picker";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { CitySelect } from "@/components/ui/city-select";
+import { matchAllowedZones } from "@/lib/timezone";
 import { ImageUploader, type UploadedImage } from "@/components/organizer/image-uploader";
 
 type DraftSession = { id: string; date: string; startTime: string; endTime: string };
@@ -124,6 +126,40 @@ export function CreateEventForm({
       })
       .catch(() => setLocationLoadError("Couldn't load states and timezones. Refresh the page to try again."));
   }, []);
+
+  // The timezone follows the city: look it up, then map it onto the zones our API accepts.
+  // Results are keyed by city+state, so a stale lookup reads as "loading" until the new one lands.
+  const [tzResult, setTzResult] = useState<{ key: string; options: string[]; failed: boolean } | null>(null);
+  const stateName = states.find((s) => s.code === form.state)?.name;
+  const tzKey = form.city && stateName && timezones.length > 0 ? `${stateName}|${form.city}` : "";
+  const tzReady = !!tzKey && tzResult?.key === tzKey;
+  const tzOptions = tzReady ? tzResult.options : [];
+  const tzStatus: "idle" | "loading" | "error" | "empty" = !tzKey
+    ? "idle"
+    : !tzReady
+      ? "loading"
+      : tzResult.failed
+        ? "error"
+        : tzOptions.length
+          ? "idle"
+          : "empty";
+  useEffect(() => {
+    if (!tzKey) return;
+    const controller = new AbortController();
+    getCityTimezones(form.city, stateName!, controller.signal)
+      .then((found) => {
+        const zones = [...new Set(found.flatMap((z) => matchAllowedZones(z, timezones)))];
+        setTzResult({ key: tzKey, options: zones, failed: false });
+        // Keep a saved timezone that still fits; otherwise pick the only match or ask the user.
+        setForm((f) => (zones.includes(f.timezone) ? f : { ...f, timezone: zones.length === 1 ? zones[0] : "" }));
+      })
+      .catch((err) => {
+        if (err?.name === "AbortError") return;
+        setTzResult({ key: tzKey, options: [], failed: true });
+        setForm((f) => ({ ...f, timezone: "" }));
+      });
+    return () => controller.abort();
+  }, [tzKey, form.city, stateName, timezones]);
 
   const firstSessionId = "s0";
   const [sessions, setSessions] = useState<DraftSession[]>([
@@ -287,7 +323,8 @@ export function CreateEventForm({
   if (!form.venue.trim()) infoErrors.venue = "Venue is required.";
   if (!form.state) infoErrors.state = "State is required.";
   if (!form.city.trim()) infoErrors.city = "City is required.";
-  if (!form.timezone) infoErrors.timezone = "Timezone is required.";
+  if (tzStatus === "loading") infoErrors.timezone = "Detecting timezone…";
+  else if (!form.timezone) infoErrors.timezone = "Timezone is required.";
   const minAge = parseAgeInput(form.minAge);
   const maxAge = parseAgeInput(form.maxAge);
   if (form.minAge.trim() && (minAge === null || minAge < 0)) infoErrors.minAge = "Enter a valid age.";
@@ -586,8 +623,8 @@ export function CreateEventForm({
                     <label className={lbl}>State <span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
                     <Select
                       value={form.state}
-                      // City options belong to the state, so changing it clears the city.
-                      onChange={(v) => setForm((f) => (f.state === v ? f : { ...f, state: v, city: "" }))}
+                      // City options and timezone belong to the state, so changing it clears both.
+                      onChange={(v) => setForm((f) => (f.state === v ? f : { ...f, state: v, city: "", timezone: "" }))}
                       options={states.map((st) => ({ value: st.code, label: st.name }))}
                       placeholder="Select state"
                       ariaLabel="State"
@@ -610,11 +647,18 @@ export function CreateEventForm({
                     <Select
                       value={form.timezone}
                       onChange={(v) => setForm((f) => ({ ...f, timezone: v }))}
-                      options={timezones.map((tz) => ({ value: tz, label: tz.replace(/_/g, " ") }))}
-                      placeholder="Select timezone"
+                      // Locked to what the city's lookup returned; only a genuine multi-zone city is selectable.
+                      options={(tzStatus === "error" || tzStatus === "empty" ? timezones : tzOptions).map((tz) => ({ value: tz, label: tz.replace(/_/g, " ") }))}
+                      placeholder={
+                        !form.city ? "Select a city first" : tzStatus === "loading" ? "Detecting timezone…" : "Select timezone"
+                      }
+                      disabled={!form.city || tzStatus === "loading" || (tzStatus === "idle" && tzOptions.length === 1)}
                       ariaLabel="Timezone"
                       className={showErrors[1] && infoErrors.timezone ? "[&>button]:border-red-400!" : ""}
                     />
+                    {tzStatus === "error" && <p className="text-[11px] text-amber-600 mt-1.5">Couldn&apos;t detect the timezone automatically. Please choose it.</p>}
+                    {tzStatus === "empty" && <p className="text-[11px] text-amber-600 mt-1.5">No timezone found for this city. Please choose it.</p>}
+                    {tzStatus === "idle" && tzOptions.length > 1 && <p className="text-[11px] text-muted-foreground mt-1.5">This city spans multiple timezones.</p>}
                     {showErrors[1] && infoErrors.timezone && <p className="text-[11px] text-red-600 mt-1.5">{infoErrors.timezone}</p>}
                   </div>
                 </div>
