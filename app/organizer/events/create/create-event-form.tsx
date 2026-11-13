@@ -24,6 +24,7 @@ import { TimePicker } from "@/components/ui/time-picker";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select } from "@/components/ui/select";
 import { CitySelect } from "@/components/ui/city-select";
+import { StateSelect } from "@/components/ui/state-select";
 import { matchAllowedZones } from "@/lib/timezone";
 import { ImageUploader, type UploadedImage } from "@/components/organizer/image-uploader";
 
@@ -621,14 +622,12 @@ export function CreateEventForm({
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <label className={lbl}>State <span className="ml-0.5 text-sm font-bold text-red-500" aria-hidden="true">*</span></label>
-                    <Select
+                    <StateSelect
+                      states={states}
                       value={form.state}
                       // City options and timezone belong to the state, so changing it clears both.
                       onChange={(v) => setForm((f) => (f.state === v ? f : { ...f, state: v, city: "", timezone: "" }))}
-                      options={states.map((st) => ({ value: st.code, label: st.name }))}
-                      placeholder="Select state"
-                      ariaLabel="State"
-                      className={showErrors[1] && infoErrors.state ? "[&>button]:border-red-400!" : ""}
+                      invalid={showErrors[1] && !!infoErrors.state}
                     />
                     {showErrors[1] && infoErrors.state && <p className="text-[11px] text-red-600 mt-1.5">{infoErrors.state}</p>}
                   </div>
