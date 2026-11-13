@@ -28,6 +28,22 @@ import { StateSelect } from "@/components/ui/state-select";
 import { matchAllowedZones } from "@/lib/timezone";
 import { ImageUploader, type UploadedImage } from "@/components/organizer/image-uploader";
 
+// Current date and time ("YYYY-MM-DDTHH:MM") in the event's timezone, which is what the API compares
+// against; falls back to the browser's clock if the zone is missing or unknown.
+function nowInZone(timeZone: string): string {
+  const d = new Date();
+  try {
+    const p = Object.fromEntries(
+      new Intl.DateTimeFormat("en-CA", { timeZone: timeZone || undefined, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
+        .formatToParts(d)
+        .map((x) => [x.type, x.value]),
+    );
+    return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+  } catch {
+    return `${todayInputValue()}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+}
+
 type DraftSession = { id: string; date: string; startTime: string; endTime: string };
 type DraftTicketType = { id: string; sessionId: string; name: string; price: string; qty: string };
 
@@ -215,6 +231,11 @@ export function CreateEventForm({
       });
   }
 
+  // True when the session's start has already passed in the event's timezone (compared to the minute).
+  // A draft's first session on its saved date is left alone, like the date check.
+  const startsInPast = (s: DraftSession, idx: number) =>
+    !!s.date && !!s.startTime && !(idx === 0 && s.date === initialEvent?.event_date) && `${s.date}T${s.startTime.slice(0, 5)}` < nowInZone(form.timezone);
+
   const [sessionError, setSessionError] = useState<string | null>(null);
 
   // The newest session must be complete and valid before another can be added.
@@ -224,6 +245,7 @@ export function CreateEventForm({
     if (s.date < todayInputValue() && !(idx === 0 && s.date === initialEvent?.event_date)) {
       return `Session ${idx + 1}: the date can't be in the past.`;
     }
+    if (startsInPast(s, idx)) return `Session ${idx + 1}: the start time can't be in the past.`;
     if (s.endTime <= s.startTime) return `Session ${idx + 1}: the end time must be after the start time.`;
     return null;
   }
@@ -341,6 +363,7 @@ export function CreateEventForm({
     if (!s.date) e.date = "Date is required.";
     else if (s.date < todayInputValue() && !(idx === 0 && s.date === initialEvent?.event_date)) e.date = "Date can't be in the past.";
     if (!s.startTime) e.startTime = "Start time is required.";
+    else if (startsInPast(s, idx)) e.startTime = "Start time can't be in the past.";
     if (!s.endTime) e.endTime = "End time is required.";
     else if (s.startTime && s.endTime <= s.startTime) e.endTime = "End time must be after the start time.";
     return e;
