@@ -906,6 +906,13 @@ export type DiscountItem = {
   uses?: number;
   event_id?: string;
   event_name?: string;
+  session_id?: string;
+  session_date?: string | null;
+  session_start_time?: string | null;
+  session_end_time?: string | null;
+  session_code?: string | null;
+  ticket_type_id?: string;
+  ticket_type_name?: string | null;
   start_at?: string | null;
   end_at?: string | null;
   status?: string;

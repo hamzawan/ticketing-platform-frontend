@@ -64,6 +64,12 @@ function fmtExpiry(iso: string | null | undefined): string {
   return Number.isNaN(date.getTime()) ? "—" : formatDate(iso);
 }
 
+function fmtSession(d: DiscountItem): string {
+  if (!d.session_date) return d.session_code ?? "—";
+  const time = d.session_start_time ? ` · ${d.session_start_time.slice(0, 5)}–${d.session_end_time?.slice(0, 5) ?? "—"}` : "";
+  return `${formatDate(d.session_date)}${time}${d.session_code ? ` (${d.session_code})` : ""}`;
+}
+
 export default function DiscountsPage() {
   const [show, setShow] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -462,7 +468,7 @@ export default function DiscountsPage() {
           <table className="w-full text-sm">
             <thead className="border-b border-border">
               <tr>
-                {["Code", "Discount", "Event", "Uses", "Expires", "Status", ""].map((h, i) => (
+                {["Code", "Discount", "Event", "Session", "Ticket Type", "Uses", "Expires", "Status", ""].map((h, i) => (
                   <th key={i} className="text-left text-xs text-muted-foreground font-medium p-4 whitespace-nowrap">
                     {h}
                   </th>
@@ -479,6 +485,8 @@ export default function DiscountsPage() {
                       {d.discount_type === "percentage" ? `${Number(d.value)}% off` : `$${Number(d.value)} off`}
                     </td>
                     <td className="p-4 text-xs text-muted-foreground">{d.event_name ?? "—"}</td>
+                    <td className="p-4 text-xs text-muted-foreground whitespace-nowrap">{fmtSession(d)}</td>
+                    <td className="p-4 text-xs text-muted-foreground">{d.ticket_type_name ?? "—"}</td>
                     <td className="p-4 text-xs min-w-28">
                       <span className="font-medium">{uses}</span>
                       <span className="text-muted-foreground"> / {d.max_uses}</span>
