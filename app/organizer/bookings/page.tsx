@@ -7,7 +7,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pagination } from "@/components/ui/pagination";
 import { Select } from "@/components/ui/select";
-import { ACCESS_TOKEN_STORAGE_KEY, formatBookingTicketTypes, formatMoney, getBookings, type BookingsResponse } from "@/lib/api";
+import { ACCESS_TOKEN_STORAGE_KEY, formatBookingTicketTypes, formatMoney, getBookings, getMyEvents, type BookingsResponse } from "@/lib/api";
 
 function getStoredToken(): string | null {
   return typeof window !== "undefined" ? window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) : null;
@@ -32,6 +32,23 @@ function localDay(iso: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+// One server page, or (for client-side filtering) every page merged into one response.
+async function fetchBookings(page: number | "all", token: string | null, status?: string): Promise<BookingsResponse> {
+  if (page !== "all") return getBookings(page, token, status);
+  const first = await getBookings(1, token, status);
+  const pageCount = Math.ceil(first.total / first.page_size);
+  const rest = await Promise.all(Array.from({ length: pageCount - 1 }, (_, i) => getBookings(i + 2, token, status)));
+  return { ...first, results: [...first.results, ...rest.flatMap((r) => r.results)] };
+}
+
+// Names of all the organizer's events (the API is paginated).
+async function fetchEventNames(token: string | null): Promise<string[]> {
+  const first = await getMyEvents(token, 1);
+  const pageCount = Math.ceil(first.total / first.page_size);
+  const rest = await Promise.all(Array.from({ length: pageCount - 1 }, (_, i) => getMyEvents(token, i + 2)));
+  return [...first.results, ...rest.flatMap((r) => r.results)].map((e) => e.name);
+}
+
 export default function BookingsPage() {
   const [search, setSearch] = useState("");
   const [eventSel, setEventSel] = useState("all");
@@ -51,13 +68,28 @@ export default function BookingsPage() {
     if (name) setEventSel(name);
   }, []);
 
+  // The dropdown lists every event, not just those on the loaded page.
+  const [eventNames, setEventNames] = useState<string[]>([]);
+  useEffect(() => {
+    fetchEventNames(getStoredToken())
+      .then(setEventNames)
+      .catch(() => {});
+  }, []);
+  const eventOptions = useMemo(() => Array.from(new Set([...eventNames, ...(eventSel !== "all" ? [eventSel] : [])])).sort(), [eventNames, eventSel]);
+
+  const hasFilters = Boolean(search || eventSel !== "all" || statusSel !== "all" || dateFrom || dateTo);
+  // The API only paginates and filters by status, so with an event / search / date filter we load
+  // every page, filter, and paginate locally. That keeps pages full and covers all bookings.
+  const clientFiltered = Boolean(search.trim() || eventSel !== "all" || dateFrom || dateTo);
+  const requestPage = clientFiltered ? "all" : page;
+
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       setLoadStatus("loading");
       try {
-        const response = await getBookings(page, getStoredToken(), statusSel === "all" ? undefined : statusSel);
+        const response = await fetchBookings(requestPage, getStoredToken(), statusSel === "all" ? undefined : statusSel);
         if (cancelled) return;
         setData(response);
         setLoadStatus("ready");
@@ -72,17 +104,9 @@ export default function BookingsPage() {
     return () => {
       cancelled = true;
     };
-  }, [page, statusSel, reloadKey]);
+  }, [requestPage, statusSel, reloadKey]);
 
-  const hasFilters = Boolean(search || eventSel !== "all" || statusSel !== "all" || dateFrom || dateTo);
-
-  // The API only paginates; search / event / date narrow the loaded page.
-  const eventOptions = useMemo(
-    () => Array.from(new Set([...(data?.results ?? []).map((b) => b.event_name), ...(eventSel !== "all" ? [eventSel] : [])])).sort(),
-    [data, eventSel],
-  );
-
-  const paged = useMemo(() => {
+  const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return (data?.results ?? []).filter((b) => {
       if (eventSel !== "all" && b.event_name !== eventSel) return false;
@@ -94,6 +118,10 @@ export default function BookingsPage() {
       return true;
     });
   }, [data, search, eventSel, dateFrom, dateTo]);
+
+  const pageSize = data?.page_size ?? 10;
+  const total = clientFiltered ? filtered.length : (data?.total ?? 0);
+  const paged = clientFiltered ? filtered.slice((page - 1) * pageSize, page * pageSize) : filtered;
 
   function resetFilters() {
     setSearch("");
@@ -116,6 +144,7 @@ export default function BookingsPage() {
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
+              setPage(1);
             }}
             placeholder="Search by name or email…"
             className="flex-1 min-w-0 bg-transparent text-base sm:text-sm outline-none placeholder:text-muted-foreground"
@@ -123,7 +152,10 @@ export default function BookingsPage() {
         </div>
         <Select
           value={eventSel}
-          onChange={setEventSel}
+          onChange={(v) => {
+            setEventSel(v);
+            setPage(1);
+          }}
           ariaLabel="Filter by event"
           className="w-full sm:w-56"
           options={[{ value: "all", label: "All Events" }, ...eventOptions.map((name) => ({ value: name, label: name }))]}
@@ -150,7 +182,10 @@ export default function BookingsPage() {
           ariaLabel="Start date"
           max={dateTo || undefined}
           value={dateFrom}
-          onChange={setDateFrom}
+          onChange={(v) => {
+            setDateFrom(v);
+            setPage(1);
+          }}
         />
         <DatePicker
           className="flex-1 min-w-36 sm:flex-none"
@@ -158,7 +193,10 @@ export default function BookingsPage() {
           ariaLabel="End date"
           min={dateFrom || undefined}
           value={dateTo}
-          onChange={setDateTo}
+          onChange={(v) => {
+            setDateTo(v);
+            setPage(1);
+          }}
         />
         {hasFilters && (
           <button
@@ -234,8 +272,8 @@ export default function BookingsPage() {
             </div>
           </>
         )}
-        {loadStatus === "ready" && data && data.total > 0 && (
-          <Pagination page={data.page} pageSize={data.page_size} total={data.total} onChange={setPage} />
+        {loadStatus === "ready" && data && total > 0 && (
+          <Pagination page={page} pageSize={pageSize} total={total} onChange={setPage} />
         )}
       </div>
     </div>
