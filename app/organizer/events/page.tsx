@@ -357,6 +357,13 @@ export default function MyEventsPage() {
                       if (ev.currentTarget.src !== FALLBACK_IMAGE) ev.currentTarget.src = FALLBACK_IMAGE;
                     }}
                   />
+                  <Link
+                    href={`/organizer/bookings?event=${encodeURIComponent(e.name)}`}
+                    onClick={(ev) => ev.stopPropagation()}
+                    className="sm:hidden absolute top-2 right-2 z-10 flex items-center gap-1 text-[11px] font-semibold tracking-wide text-white bg-black/55 backdrop-blur-md border border-white/25 pl-2 pr-2.5 py-1 rounded-full shadow-lg shadow-black/30 active:scale-95 transition-transform"
+                  >
+                    <BookOpen size={11} className="text-white/90" /> Bookings
+                  </Link>
                 </div>
                 <div className="flex flex-1 items-center min-w-0">
                 <div className="flex-1 p-4 min-w-0">
@@ -372,7 +379,7 @@ export default function MyEventsPage() {
                     </div>
                     <StatusBadge status={e.status} />
                   </div>
-                  <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Calendar size={11} />
                       <span>
@@ -380,8 +387,8 @@ export default function MyEventsPage() {
                       </span>
                     </div>
                     {e.capacity > 0 ? (
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <div className="flex-1 h-1 rounded-full bg-secondary overflow-hidden max-w-24">
+                      <div className="flex items-center gap-2 flex-1 min-w-[10rem]">
+                        <div className="flex-1 h-1 rounded-full bg-secondary overflow-hidden sm:max-w-24">
                           <div
                             className={`h-full rounded-full ${e.sold / e.capacity >= 0.9 ? "bg-orange-500" : "bg-primary"}`}
                             style={{ width: `${Math.min((e.sold / e.capacity) * 100, 100)}%` }}
@@ -397,7 +404,7 @@ export default function MyEventsPage() {
                     {e.revenue > 0 && <span className="text-xs font-bold flex-shrink-0">${e.revenue.toLocaleString()}</span>}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 pr-3 sm:pr-4 flex-shrink-0">
+                <div className="flex items-center gap-2 pr-2 sm:pr-4 flex-shrink-0">
                   <Link
                     href={`/organizer/bookings?event=${encodeURIComponent(e.name)}`}
                     onClick={(ev) => ev.stopPropagation()}
