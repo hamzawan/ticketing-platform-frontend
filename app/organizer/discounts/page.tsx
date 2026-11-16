@@ -311,12 +311,14 @@ export default function DiscountsPage() {
         title="Discounts & Coupons"
         subtitle="Create and manage discount codes for your events."
         action={
+          show ? undefined : (
           <button
             onClick={() => setShow(true)}
             className="flex items-center gap-2 bg-primary text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-primary/90 transition-colors"
           >
             <Plus size={15} /> New Code
           </button>
+          )
         }
       />
       {show && (
