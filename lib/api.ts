@@ -851,6 +851,12 @@ export type BookingItem = {
   customer_name: string;
   customer_email: string;
   event_name: string;
+  // Event schedule, shown in the event's own timezone.
+  event_date?: string | null;
+  start_time?: string | null;
+  timezone?: string | null;
+  // Timezone the booking was made in; `created_at` is shown in this zone.
+  booking_timezone?: string | null;
   // Not guaranteed to be plain strings — see formatBookingTicketTypes().
   ticket_types: unknown;
   tickets_count: number;

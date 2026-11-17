@@ -1,5 +1,6 @@
 "use client";
 
+import { zoneAbbreviation } from "@/lib/timezone";
 import { LoadError } from "@/components/organizer/load-error";
 import { useEffect, useMemo, useState } from "react";
 import { BookOpen, RotateCcw, Search } from "lucide-react";
@@ -19,10 +20,36 @@ const STATUS_STYLE: Record<string, string> = {
   pending: "bg-amber-50 text-amber-700 border-amber-200",
 };
 
-function fmtBookingDate(iso: string): string {
-  const d = new Date(iso);
+// When the booking was made, in the booking's timezone (falls back to the browser's), e.g. "Nov 12, 3:45 PM CST".
+function fmtBookingDate(iso: string, bookingTimeZone?: string | null): string {
+  // The API can send UTC timestamps without a "Z"/offset, which JS would read as local time; treat those as UTC.
+  const d = new Date(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(iso) ? iso : `${iso.replace(" ", "T")}Z`);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  let timeZone = bookingTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone });
+  } catch {
+    timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  }
+  const text = d.toLocaleString("en-US", { timeZone, month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const abbr = zoneAbbreviation(timeZone, d);
+  return abbr ? `${text} ${abbr}` : text;
+}
+
+// The event's date and start time as scheduled in its own timezone, e.g. "Dec 5, 7:00 PM CST".
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used again once the column is re-enabled
+function fmtEventDateTime(date?: string | null, time?: string | null, timeZone?: string | null): string {
+  const dm = /^(\d{4})-(\d{2})-(\d{2})/.exec(date ?? "");
+  const tm = /^(\d{1,2}):(\d{2})/.exec(time ?? "");
+  if (!dm || !tm) return "—";
+  const [y, mo, day, h, mi] = [dm[1], dm[2], dm[3], tm[1], tm[2]].map(Number);
+  // The wall-clock time is already in the event's zone, so print it as-is (UTC avoids any shift)...
+  const wall = new Date(Date.UTC(y, mo - 1, day, h, mi));
+  const text = wall.toLocaleString("en-US", { timeZone: "UTC", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  if (!timeZone) return text;
+  // ...and name the zone (CST vs CDT) as it applies on that date.
+  const abbr = zoneAbbreviation(timeZone, wall);
+  return abbr ? `${text} ${abbr}` : text;
 }
 
 // Local calendar day (YYYY-MM-DD) so the From/To inputs compare like-for-like.
@@ -240,7 +267,17 @@ export default function BookingsPage() {
               <table className="w-full min-w-[960px] lg:min-w-0 text-sm">
                 <thead className="border-b border-border bg-secondary/30">
                   <tr>
-                    {["Booking ID", "Customer", "Event", "Ticket Type", "Tickets", "Amount", "Booking Date", "Status"].map((h) => (
+                    {[
+                      "Booking ID",
+                      "Customer",
+                      "Event",
+                      // "Event Date & Time", // Hidden until the bookings list API returns event date, start time and timezone.
+                      "Ticket Type",
+                      "Tickets",
+                      "Amount",
+                      "Booking Date",
+                      "Status",
+                    ].map((h) => (
                       <th key={h} className="text-left text-xs text-muted-foreground font-semibold px-5 py-3 whitespace-nowrap">
                         {h}
                       </th>
@@ -256,10 +293,13 @@ export default function BookingsPage() {
                         <div className="text-xs text-muted-foreground">{b.customer_email}</div>
                       </td>
                       <td className="px-5 py-3.5 text-xs text-muted-foreground max-w-36 truncate">{b.event_name}</td>
+                      {/* Hidden until the API returns event date, start time and timezone:
+                      <td className="px-5 py-3.5 text-xs text-muted-foreground whitespace-nowrap">{fmtEventDateTime(b.event_date, b.start_time, b.timezone)}</td>
+                      */}
                       <td className="px-5 py-3.5 text-xs text-muted-foreground">{formatBookingTicketTypes(b.ticket_types)}</td>
                       <td className="px-5 py-3.5 text-xs font-semibold text-center">{b.tickets_count}</td>
                       <td className="px-5 py-3.5 text-xs font-bold">{formatMoney(b.total_amount)}</td>
-                      <td className="px-5 py-3.5 text-xs text-muted-foreground whitespace-nowrap">{fmtBookingDate(b.created_at)}</td>
+                      <td className="px-5 py-3.5 text-xs text-muted-foreground whitespace-nowrap">{fmtBookingDate(b.created_at, b.booking_timezone)}</td>
                       <td className="px-5 py-3.5">
                         <span className={`text-xs border rounded-full px-2.5 py-0.5 font-medium capitalize ${STATUS_STYLE[b.status.toLowerCase()] ?? ""}`}>
                           {b.status.replace(/_/g, " ")}

@@ -24,3 +24,51 @@ export function matchAllowedZones(zone: string, allowed: string[]): string[] {
   if (!sig) return [];
   return allowed.filter((a) => offsetSignature(a) === sig);
 }
+
+// Abbreviations Intl doesn't give in en-US (it falls back to "GMT+5" outside North America).
+const ZONE_ABBR: Record<string, string> = {
+  "Asia/Karachi": "PKT",
+  "Asia/Kolkata": "IST",
+  "Asia/Calcutta": "IST",
+  "Asia/Dhaka": "BST",
+  "Asia/Dubai": "GST",
+  "Asia/Riyadh": "AST",
+  "Asia/Tokyo": "JST",
+  "Asia/Seoul": "KST",
+  "Asia/Shanghai": "CST",
+  "Asia/Hong_Kong": "HKT",
+  "Asia/Singapore": "SGT",
+  "Asia/Manila": "PST",
+  "Asia/Jakarta": "WIB",
+  "Asia/Bangkok": "ICT",
+  "Europe/London": "GMT/BST",
+  "Europe/Paris": "CET",
+  "Europe/Berlin": "CET",
+  "Europe/Madrid": "CET",
+  "Europe/Rome": "CET",
+  "Europe/Amsterdam": "CET",
+  "Europe/Istanbul": "TRT",
+  "Europe/Moscow": "MSK",
+  "Africa/Cairo": "EET",
+  "Africa/Lagos": "WAT",
+  "Africa/Nairobi": "EAT",
+  "Africa/Johannesburg": "SAST",
+  "Australia/Sydney": "AEST/AEDT",
+  "Australia/Melbourne": "AEST/AEDT",
+  "Australia/Perth": "AWST",
+  "Pacific/Auckland": "NZST/NZDT",
+};
+
+// Short name for a timezone at a given moment, e.g. "CST", "PKT". Where Intl would only say
+// "GMT+5", use the well-known abbreviation, else the full name ("Pakistan Standard Time").
+export function zoneAbbreviation(timeZone: string, at: Date): string | undefined {
+  const name = (style: "short" | "long") =>
+    new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: style }).formatToParts(at).find((p) => p.type === "timeZoneName")?.value;
+  try {
+    const short = name("short");
+    if (short && !/^(GMT|UTC)[+-−]/.test(short)) return short;
+    return ZONE_ABBR[timeZone] ?? name("long") ?? short;
+  } catch {
+    return undefined;
+  }
+}
