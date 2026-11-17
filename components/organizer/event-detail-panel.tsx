@@ -877,7 +877,7 @@ export function EventDetailPanel({
         </div>
         <div className="flex-shrink-0 px-4 py-3 sm:py-0 flex items-center border-t sm:border-t-0 sm:border-l border-border">
           <Link
-            href={`/organizer/bookings?event=${encodeURIComponent(event.name)}`}
+            href={`/organizer/bookings?event=${encodeURIComponent(event.id)}`}
             className="flex w-full sm:w-auto items-center justify-center gap-2 text-xs font-semibold text-primary bg-primary/8 border border-primary/20 px-3 py-2 rounded-lg hover:bg-primary/15 transition-colors whitespace-nowrap"
           >
             <BookOpen size={12} /> See All Bookings

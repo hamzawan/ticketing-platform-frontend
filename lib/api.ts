@@ -396,8 +396,10 @@ export type MyEventsListResponse = {
   results: MyEventListItem[];
 };
 
-export async function getMyEvents(token?: string | null, page = 1): Promise<MyEventsListResponse> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/my-events/list/?page=${page}`, {
+export async function getMyEvents(token?: string | null, page = 1, pageSize?: number): Promise<MyEventsListResponse> {
+  const query = new URLSearchParams({ page: String(page) });
+  if (pageSize) query.set("page_size", String(pageSize));
+  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/my-events/list/?${query}`, {
     cache: "no-store",
     headers: {
       Accept: "application/json",
@@ -872,9 +874,24 @@ export type BookingsResponse = {
   results: BookingItem[];
 };
 
-export async function getBookings(page = 1, token?: string | null, status?: string): Promise<BookingsResponse> {
+export type BookingFilters = {
+  status?: string;
+  eventId?: string;
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  // IANA zone the From/To days are interpreted in.
+  timezone?: string;
+};
+
+export async function getBookings(page = 1, token?: string | null, filters: BookingFilters = {}): Promise<BookingsResponse> {
   const params = new URLSearchParams({ page: String(page) });
-  if (status) params.set("status", status);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.eventId) params.set("event_id", filters.eventId);
+  if (filters.search) params.set("search", filters.search);
+  if (filters.dateFrom) params.set("date_from", filters.dateFrom);
+  if (filters.dateTo) params.set("date_to", filters.dateTo);
+  if ((filters.dateFrom || filters.dateTo) && filters.timezone) params.set("timezone", filters.timezone);
   const res = await fetch(`${API_BASE_URL}/api/v1/organizer/bookings/list/?${params}`, {
     cache: "no-store",
     headers: {

@@ -52,29 +52,7 @@ function fmtEventDateTime(date?: string | null, time?: string | null, timeZone?:
   return abbr ? `${text} ${abbr}` : text;
 }
 
-// Local calendar day (YYYY-MM-DD) so the From/To inputs compare like-for-like.
-function localDay(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-// One server page, or (for client-side filtering) every page merged into one response.
-async function fetchBookings(page: number | "all", token: string | null, status?: string): Promise<BookingsResponse> {
-  if (page !== "all") return getBookings(page, token, status);
-  const first = await getBookings(1, token, status);
-  const pageCount = Math.ceil(first.total / first.page_size);
-  const rest = await Promise.all(Array.from({ length: pageCount - 1 }, (_, i) => getBookings(i + 2, token, status)));
-  return { ...first, results: [...first.results, ...rest.flatMap((r) => r.results)] };
-}
-
-// Names of all the organizer's events (the API is paginated).
-async function fetchEventNames(token: string | null): Promise<string[]> {
-  const first = await getMyEvents(token, 1);
-  const pageCount = Math.ceil(first.total / first.page_size);
-  const rest = await Promise.all(Array.from({ length: pageCount - 1 }, (_, i) => getMyEvents(token, i + 2)));
-  return [...first.results, ...rest.flatMap((r) => r.results)].map((e) => e.name);
-}
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default function BookingsPage() {
   const [search, setSearch] = useState("");
@@ -88,35 +66,62 @@ export default function BookingsPage() {
   const [loadError, setLoadError] = useState<unknown>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
-  // Deep link from an event's "See All Bookings": /organizer/bookings?event=<name>
+  // Deep link from an event's "See All Bookings": /organizer/bookings?event=<event id>.
+  // The API only accepts a UUID, so an older link carrying an event name is resolved to its id
+  // once the events have loaded (and the first request waits for that, to avoid an unfiltered call).
+  const [pendingEventName, setPendingEventName] = useState<string | null>(null);
   useEffect(() => {
-    const name = new URLSearchParams(window.location.search).get("event");
+    const param = new URLSearchParams(window.location.search).get("event");
+    if (!param) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (name) setEventSel(name);
+    if (UUID_RE.test(param)) setEventSel(param);
+    else setPendingEventName(param);
   }, []);
 
-  // The dropdown lists every event, not just those on the loaded page.
-  const [eventNames, setEventNames] = useState<string[]>([]);
+  // Events for the dropdown: a single request, not one per page.
+  const [events, setEvents] = useState<{ id: string; name: string }[]>([]);
   useEffect(() => {
-    fetchEventNames(getStoredToken())
-      .then(setEventNames)
-      .catch(() => {});
+    const param = new URLSearchParams(window.location.search).get("event");
+    getMyEvents(getStoredToken(), 1, 1000)
+      .then((r) => {
+        const list = r.results.map((e) => ({ id: e.id, name: e.name }));
+        setEvents(list);
+        const match = param && !UUID_RE.test(param) ? list.find((e) => e.name === param) : undefined;
+        if (match) setEventSel(match.id);
+      })
+      .catch(() => {})
+      .finally(() => setPendingEventName(null));
   }, []);
-  const eventOptions = useMemo(() => Array.from(new Set([...eventNames, ...(eventSel !== "all" ? [eventSel] : [])])).sort(), [eventNames, eventSel]);
+  const eventOptions = useMemo(
+    () => events.map((e) => ({ value: e.id, label: e.name })).sort((a, b) => a.label.localeCompare(b.label)),
+    [events],
+  );
 
   const hasFilters = Boolean(search || eventSel !== "all" || statusSel !== "all" || dateFrom || dateTo);
-  // The API only paginates and filters by status, so with an event / search / date filter we load
-  // every page, filter, and paginate locally. That keeps pages full and covers all bookings.
-  const clientFiltered = Boolean(search.trim() || eventSel !== "all" || dateFrom || dateTo);
-  const requestPage = clientFiltered ? "all" : page;
 
+  // Wait for typing to settle before searching, so we don't request on every keystroke.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Every filter is applied by the API, so each change is one request for the page being viewed.
+  useEffect(() => {
+    if (pendingEventName) return;
     let cancelled = false;
 
     async function load() {
       setLoadStatus("loading");
       try {
-        const response = await fetchBookings(requestPage, getStoredToken(), statusSel === "all" ? undefined : statusSel);
+        const response = await getBookings(page, getStoredToken(), {
+          status: statusSel === "all" ? undefined : statusSel,
+          eventId: eventSel === "all" ? undefined : eventSel,
+          search: debouncedSearch || undefined,
+          dateFrom: dateFrom || undefined,
+          dateTo: dateTo || undefined,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        });
         if (cancelled) return;
         setData(response);
         setLoadStatus("ready");
@@ -131,24 +136,11 @@ export default function BookingsPage() {
     return () => {
       cancelled = true;
     };
-  }, [requestPage, statusSel, reloadKey]);
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return (data?.results ?? []).filter((b) => {
-      if (eventSel !== "all" && b.event_name !== eventSel) return false;
-      const day = localDay(b.created_at);
-      if (dateFrom && day < dateFrom) return false;
-      if (dateTo && day > dateTo) return false;
-      // Any of these can come back null from the API (e.g. guest bookings).
-      if (q && ![b.customer_email, b.customer_name, b.booking_number].some((v) => (v ?? "").toLowerCase().includes(q))) return false;
-      return true;
-    });
-  }, [data, search, eventSel, dateFrom, dateTo]);
+  }, [page, statusSel, eventSel, debouncedSearch, dateFrom, dateTo, reloadKey, pendingEventName]);
 
   const pageSize = data?.page_size ?? 10;
-  const total = clientFiltered ? filtered.length : (data?.total ?? 0);
-  const paged = clientFiltered ? filtered.slice((page - 1) * pageSize, page * pageSize) : filtered;
+  const total = data?.total ?? 0;
+  const paged = data?.results ?? [];
 
   function resetFilters() {
     setSearch("");
@@ -185,7 +177,7 @@ export default function BookingsPage() {
           }}
           ariaLabel="Filter by event"
           className="w-full sm:w-56"
-          options={[{ value: "all", label: "All Events" }, ...eventOptions.map((name) => ({ value: name, label: name }))]}
+          options={[{ value: "all", label: "All Events" }, ...eventOptions]}
         />
         <Select
           value={statusSel}

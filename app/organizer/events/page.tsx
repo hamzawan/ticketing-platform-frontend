@@ -358,7 +358,7 @@ export default function MyEventsPage() {
                     }}
                   />
                   <Link
-                    href={`/organizer/bookings?event=${encodeURIComponent(e.name)}`}
+                    href={`/organizer/bookings?event=${encodeURIComponent(e.id)}`}
                     onClick={(ev) => ev.stopPropagation()}
                     className="sm:hidden absolute top-2 right-2 z-10 flex items-center gap-1 text-[11px] font-semibold tracking-wide text-white bg-black/55 backdrop-blur-md border border-white/25 pl-2 pr-2.5 py-1 rounded-full shadow-lg shadow-black/30 active:scale-95 transition-transform"
                   >
@@ -406,7 +406,7 @@ export default function MyEventsPage() {
                 </div>
                 <div className="flex items-center gap-2 pr-2 sm:pr-4 flex-shrink-0">
                   <Link
-                    href={`/organizer/bookings?event=${encodeURIComponent(e.name)}`}
+                    href={`/organizer/bookings?event=${encodeURIComponent(e.id)}`}
                     onClick={(ev) => ev.stopPropagation()}
                     className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-primary border border-primary/20 bg-primary/5 px-3 py-1.5 rounded-lg hover:bg-primary/15 transition-colors opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                   >
