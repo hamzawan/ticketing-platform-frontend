@@ -63,7 +63,7 @@ function toDisplayOrders(dashboard: DashboardResponse): DisplayOrder[] {
     event: b.event_name,
     type: b.ticket_type_name,
     amount: b.payment_amount,
-    status: b.payment_status ? b.payment_status.toLowerCase() : "pending",
+    status: (b.status || b.payment_status || "pending").toLowerCase(),
   }));
 }
 

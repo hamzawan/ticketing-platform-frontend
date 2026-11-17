@@ -16,7 +16,9 @@ export type DashboardLatestBooking = {
   event_name: string;
   ticket_type_name: string;
   payment_amount: string;
-  payment_status: string;
+  // Booking status (authoritative); payment_status is kept only as a fallback.
+  status?: string;
+  payment_status?: string;
 };
 
 export type DashboardResponse = {
