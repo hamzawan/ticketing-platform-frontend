@@ -69,13 +69,16 @@ export default function BookingsPage() {
   // Deep link from an event's "See All Bookings": /organizer/bookings?event=<event id>.
   // The API only accepts a UUID, so an older link carrying an event name is resolved to its id
   // once the events have loaded (and the first request waits for that, to avoid an unfiltered call).
+  // The first request waits until the URL has been read, so a deep link never fires an unfiltered call.
+  const [urlRead, setUrlRead] = useState(false);
   const [pendingEventName, setPendingEventName] = useState<string | null>(null);
   useEffect(() => {
     const param = new URLSearchParams(window.location.search).get("event");
-    if (!param) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (UUID_RE.test(param)) setEventSel(param);
-    else setPendingEventName(param);
+    /* eslint-disable react-hooks/set-state-in-effect */
+    if (param && UUID_RE.test(param)) setEventSel(param);
+    else if (param) setPendingEventName(param);
+    setUrlRead(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   // Events for the dropdown: a single request, not one per page.
@@ -108,7 +111,7 @@ export default function BookingsPage() {
 
   // Every filter is applied by the API, so each change is one request for the page being viewed.
   useEffect(() => {
-    if (pendingEventName) return;
+    if (!urlRead || pendingEventName) return;
     let cancelled = false;
 
     async function load() {
@@ -136,7 +139,7 @@ export default function BookingsPage() {
     return () => {
       cancelled = true;
     };
-  }, [page, statusSel, eventSel, debouncedSearch, dateFrom, dateTo, reloadKey, pendingEventName]);
+  }, [page, statusSel, eventSel, debouncedSearch, dateFrom, dateTo, reloadKey, pendingEventName, urlRead]);
 
   const pageSize = data?.page_size ?? 10;
   const total = data?.total ?? 0;
