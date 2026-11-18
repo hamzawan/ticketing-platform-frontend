@@ -16,7 +16,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { clearSession } from "@/lib/auth";
+import { clearSession, LOGIN_URL } from "@/lib/auth";
 
 const NAV_ITEMS = [
   { href: "/organizer", label: "Dashboard", Icon: LayoutDashboard },
@@ -93,7 +93,7 @@ function SignOutButton({ onNavigate }: { onNavigate?: () => void }) {
   function handleSignOut() {
     clearSession();
     onNavigate?.();
-    router.push("/");
+    router.push(LOGIN_URL);
   }
 
   return (

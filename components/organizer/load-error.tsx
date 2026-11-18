@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { RefreshCw, WifiOff } from "lucide-react";
 import { ApiError } from "@/lib/api";
-import { clearSession } from "@/lib/auth";
+import { clearSession, LOGIN_URL } from "@/lib/auth";
 
 // Single place that turns a failed load into a user-facing message, so every
 // organizer screen reacts the same way to offline / expired session / server errors.
@@ -36,7 +36,7 @@ export function LoadError({ error, onRetry }: { error: unknown; onRetry: () => v
   useEffect(() => {
     if (!expired) return;
     clearSession();
-    router.replace("/");
+    router.replace(LOGIN_URL);
   }, [expired, router]);
 
   return (

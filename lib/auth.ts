@@ -11,3 +11,6 @@ export function clearSession(): void {
   window.localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
   window.localStorage.removeItem(USER_STORAGE_KEY);
 }
+
+// Where to send users after sign-out or an expired session (opens the Sign In tab).
+export const LOGIN_URL = "/?mode=login";

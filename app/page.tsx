@@ -387,20 +387,24 @@ function LeftPanel() {
 export default function OrganizerAuthPage() {
   const router = useRouter();
   const [checked, setChecked] = useState(false);
+  // signup first, then on success auto-transition to login, login success → dashboard
+  const [mode, setMode] = useState<"signup" | "login">("signup");
 
   useEffect(() => {
     if (hasSession()) {
       router.replace("/organizer");
       return;
     }
+    // Sign-out and expired sessions redirect here with ?mode=login.
+    if (new URLSearchParams(window.location.search).get("mode") === "login") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMode("login");
+    }
     // Mount-only check of localStorage-backed session state; it can't be
     // read during SSR, so this is the earliest point it can be resolved.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setChecked(true);
   }, [router]);
 
-  // signup first, then on success auto-transition to login, login success → dashboard
-  const [mode, setMode] = useState<"signup" | "login">("signup");
   const [signupSuccess, setSignupSuccess] = useState(false);
 
   // signup fields — matches payload: email, password1, password2
