@@ -138,6 +138,46 @@ async function readErrorDetail(res: Response, fallback: string): Promise<string>
   return fallback;
 }
 
+// Exchanges the stored refresh token for a new access token. Concurrent 401s
+// share one in-flight request so the refresh endpoint is only hit once.
+// Resolves to null when there is no refresh token or it was rejected.
+let refreshInFlight: Promise<string | null> | null = null;
+
+function refreshAccessToken(): Promise<string | null> {
+  refreshInFlight ??= (async () => {
+    const refreshToken = window.localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
+    if (!refreshToken) return null;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/auth/refresh/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+      if (!res.ok) return null;
+      const { access_token } = (await res.json()) as { access_token: string };
+      window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, access_token);
+      return access_token;
+    } catch {
+      return null;
+    }
+  })().finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
+}
+
+// fetch for authenticated endpoints: if the access token has expired (401),
+// refresh it once and retry the request. If the refresh fails, the original
+// 401 is returned so callers still end up on the "session expired" path.
+async function authFetch(url: string, init: RequestInit & { headers?: Record<string, string> } = {}) {
+  const res = await fetch(url, init);
+  if (res.status !== 401 || typeof window === "undefined") return res;
+
+  const accessToken = await refreshAccessToken();
+  if (!accessToken) return res;
+  return fetch(url, { ...init, headers: { ...init.headers, Authorization: `Bearer ${accessToken}` } });
+}
+
 export async function registerOrganizer(payload: {
   email: string;
   password1: string;
@@ -171,7 +211,7 @@ export async function loginOrganizer(payload: { email: string; password: string 
 }
 
 export async function getDashboard(token?: string | null): Promise<DashboardResponse> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/dashboard/`, {
+  const res = await authFetch(`${API_BASE_URL}/api/v1/organizer/dashboard/`, {
     cache: "no-store",
     headers: {
       Accept: "application/json",
@@ -342,7 +382,7 @@ export type OrganizerEvent = {
 };
 
 export async function getEvents(token?: string | null): Promise<OrganizerEvent[]> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/events/list/`, {
+  const res = await authFetch(`${API_BASE_URL}/api/v1/events/list/`, {
     cache: "no-store",
     headers: {
       Accept: "application/json",
@@ -358,7 +398,7 @@ export async function getEvents(token?: string | null): Promise<OrganizerEvent[]
 }
 
 export async function getEvent(eventId: string, token?: string | null): Promise<OrganizerEvent> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/events/${eventId}/retrieve/`, {
+  const res = await authFetch(`${API_BASE_URL}/api/v1/events/${eventId}/retrieve/`, {
     cache: "no-store",
     headers: {
       Accept: "application/json",
@@ -399,7 +439,7 @@ export type MyEventsListResponse = {
 export async function getMyEvents(token?: string | null, page = 1, pageSize?: number): Promise<MyEventsListResponse> {
   const query = new URLSearchParams({ page: String(page) });
   if (pageSize) query.set("page_size", String(pageSize));
-  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/my-events/list/?${query}`, {
+  const res = await authFetch(`${API_BASE_URL}/api/v1/organizer/my-events/list/?${query}`, {
     cache: "no-store",
     headers: {
       Accept: "application/json",
@@ -522,7 +562,7 @@ export async function createEvent(payload: CreateEventPayload, token?: string | 
     if (fallback) payload = { ...payload, images: [fallback] };
   }
 
-  const res = await fetch(`${API_BASE_URL}/api/v1/events/create/`, {
+  const res = await authFetch(`${API_BASE_URL}/api/v1/events/create/`, {
     method: "POST",
     headers: {
       Accept: "application/json",
@@ -543,7 +583,7 @@ export async function updateEvent(
   payload: CreateEventPayload,
   token?: string | null,
 ): Promise<OrganizerEvent> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/events/${eventId}/update/`, {
+  const res = await authFetch(`${API_BASE_URL}/api/v1/events/${eventId}/update/`, {
     method: "PUT",
     headers: {
       Accept: "application/json",
@@ -574,7 +614,7 @@ export async function createSession(
   },
   token?: string | null,
 ): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/events/${eventId}/sessions/`, {
+  const res = await authFetch(`${API_BASE_URL}/api/v1/events/${eventId}/sessions/`, {
     method: "POST",
     headers: {
       Accept: "application/json",
@@ -599,7 +639,7 @@ export async function updateSession(
   payload: { session_date: string; start_time: string; end_time: string },
   token?: string | null,
 ): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/events/${eventId}/sessions/${sessionId}/`, {
+  const res = await authFetch(`${API_BASE_URL}/api/v1/events/${eventId}/sessions/${sessionId}/`, {
     method: "PUT",
     headers: {
       Accept: "application/json",
@@ -623,7 +663,7 @@ export async function createTicketType(
   payload: { name: string; price: number; quantity: number; session_id: string },
   token?: string | null,
 ): Promise<EventTicketType> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/events/${eventId}/ticket-types/`, {
+  const res = await authFetch(`${API_BASE_URL}/api/v1/events/${eventId}/ticket-types/`, {
     method: "POST",
     headers: {
       Accept: "application/json",
@@ -646,7 +686,7 @@ export async function updateTicketType(
   payload: { name: string; price: number; quantity: number },
   token?: string | null,
 ): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/events/${eventId}/ticket-types/${ticketTypeId}/`, {
+  const res = await authFetch(`${API_BASE_URL}/api/v1/events/${eventId}/ticket-types/${ticketTypeId}/`, {
     method: "PUT",
     headers: {
       Accept: "application/json",
@@ -662,7 +702,7 @@ export async function updateTicketType(
 }
 
 export async function deleteTicketType(eventId: string, ticketTypeId: string, token?: string | null): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/events/${eventId}/ticket-types/${ticketTypeId}/`, {
+  const res = await authFetch(`${API_BASE_URL}/api/v1/events/${eventId}/ticket-types/${ticketTypeId}/`, {
     method: "DELETE",
     headers: {
       Accept: "application/json",
@@ -788,7 +828,7 @@ export async function getRefundRequests(
   if (filters.created_to) params.set("created_to", filters.created_to);
 
   const query = params.toString();
-  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/refund-requests/${query ? `?${query}` : ""}`, {
+  const res = await authFetch(`${API_BASE_URL}/api/v1/organizer/refund-requests/${query ? `?${query}` : ""}`, {
     cache: "no-store",
     headers: {
       Accept: "application/json",
@@ -809,7 +849,7 @@ async function postRefundDecision(
   token?: string | null,
   body?: unknown,
 ): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/refund-requests/${refundRequestId}/${decision}/`, {
+  const res = await authFetch(`${API_BASE_URL}/api/v1/organizer/refund-requests/${refundRequestId}/${decision}/`, {
     method: "POST",
     headers: {
       Accept: "application/json",
@@ -833,7 +873,7 @@ export function rejectRefundRequest(refundRequestId: string, reason: string, tok
 }
 
 export async function publishEvent(eventId: string, token?: string | null): Promise<OrganizerEvent> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/events/${eventId}/publish/`, {
+  const res = await authFetch(`${API_BASE_URL}/api/v1/events/${eventId}/publish/`, {
     method: "POST",
     headers: {
       Accept: "application/json",
@@ -892,7 +932,7 @@ export async function getBookings(page = 1, token?: string | null, filters: Book
   if (filters.dateFrom) params.set("date_from", filters.dateFrom);
   if (filters.dateTo) params.set("date_to", filters.dateTo);
   if ((filters.dateFrom || filters.dateTo) && filters.timezone) params.set("timezone", filters.timezone);
-  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/bookings/list/?${params}`, {
+  const res = await authFetch(`${API_BASE_URL}/api/v1/organizer/bookings/list/?${params}`, {
     cache: "no-store",
     headers: {
       Accept: "application/json",
@@ -972,7 +1012,7 @@ export async function getDiscounts(
   const params = new URLSearchParams({ page: String(page) });
   if (eventId) params.set("event_id", eventId);
   if (status) params.set("status", status);
-  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/discounts/list/?${params}`, {
+  const res = await authFetch(`${API_BASE_URL}/api/v1/organizer/discounts/list/?${params}`, {
     cache: "no-store",
     headers: {
       Accept: "application/json",
@@ -988,7 +1028,7 @@ export async function getDiscounts(
 }
 
 export async function createDiscount(payload: CreateDiscountPayload, token?: string | null): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/discounts/create/`, {
+  const res = await authFetch(`${API_BASE_URL}/api/v1/organizer/discounts/create/`, {
     method: "POST",
     headers: {
       Accept: "application/json",
@@ -1004,7 +1044,7 @@ export async function createDiscount(payload: CreateDiscountPayload, token?: str
 }
 
 export async function deleteDiscount(discountId: string, token?: string | null): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/discounts/${discountId}/delete/`, {
+  const res = await authFetch(`${API_BASE_URL}/api/v1/organizer/discounts/${discountId}/delete/`, {
     method: "DELETE",
     headers: {
       Accept: "application/json",
@@ -1050,7 +1090,7 @@ export async function getTickets(filters: TicketFilters = {}, page = 1, token?: 
   if (filters.date_to) params.set("date_to", filters.date_to);
 
   const query = params.toString();
-  const res = await fetch(`${API_BASE_URL}/api/v1/tickets/all/${query ? `?${query}` : ""}`, {
+  const res = await authFetch(`${API_BASE_URL}/api/v1/tickets/all/${query ? `?${query}` : ""}`, {
     cache: "no-store",
     headers: {
       Accept: "application/json",
@@ -1124,7 +1164,7 @@ export type AddOnPayload = {
 
 export async function getAddOns(eventId: string, page = 1, token?: string | null): Promise<AddOnsResponse> {
   const params = new URLSearchParams({ page: String(page), event_id: eventId });
-  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/add-ons/list/?${params}`, {
+  const res = await authFetch(`${API_BASE_URL}/api/v1/organizer/add-ons/list/?${params}`, {
     cache: "no-store",
     headers: {
       Accept: "application/json",
@@ -1154,7 +1194,7 @@ function buildAddOnFormData(payload: AddOnPayload): FormData {
 export async function createAddOn(eventId: string, payload: AddOnPayload, token?: string | null): Promise<AddOnItem> {
   const body = buildAddOnFormData(payload);
   body.append("event_id", eventId);
-  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/add-ons/create/`, {
+  const res = await authFetch(`${API_BASE_URL}/api/v1/organizer/add-ons/create/`, {
     method: "POST",
     headers: {
       Accept: "application/json",
@@ -1171,7 +1211,7 @@ export async function createAddOn(eventId: string, payload: AddOnPayload, token?
 }
 
 export async function deleteAddOn(addOnId: string, token?: string | null): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/add-ons/${addOnId}/delete/`, {
+  const res = await authFetch(`${API_BASE_URL}/api/v1/organizer/add-ons/${addOnId}/delete/`, {
     method: "DELETE",
     headers: {
       Accept: "application/json",
@@ -1185,7 +1225,7 @@ export async function deleteAddOn(addOnId: string, token?: string | null): Promi
 }
 
 export async function updateAddOn(addOnId: string, payload: AddOnPayload, token?: string | null): Promise<AddOnItem> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/organizer/add-ons/${addOnId}/update/`, {
+  const res = await authFetch(`${API_BASE_URL}/api/v1/organizer/add-ons/${addOnId}/update/`, {
     method: "PUT",
     headers: {
       Accept: "application/json",
