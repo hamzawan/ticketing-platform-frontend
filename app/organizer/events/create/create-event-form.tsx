@@ -201,6 +201,9 @@ export function CreateEventForm({
 
   const existingImages = initialEvent?.images.map((img) => extractImageUrl(img)).filter((u): u is string => Boolean(u)) ?? [];
   const [images, setImages] = useState<UploadedImage[]>([]);
+  // Files already sent to the API. Later saves of the same event only send
+  // images added since, so re-saving doesn't upload duplicates.
+  const uploadedFilesRef = useRef<Set<File>>(new Set());
 
   const [submitting, setSubmitting] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
@@ -457,6 +460,20 @@ export function CreateEventForm({
     return typeof window !== "undefined" ? window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) : null;
   }
 
+  // Creates the event the first time, then updates that same event on every
+  // later save (e.g. after going back from the review step to edit something),
+  // so the user never ends up with a duplicate.
+  async function persistEvent(): Promise<OrganizerEvent> {
+    const payload = buildPayload();
+    const newImages = payload.images.filter((f) => !uploadedFilesRef.current.has(f));
+    const saved = createdEvent
+      ? await updateEvent(createdEvent.id, { ...payload, images: newImages }, getAccessToken())
+      : await createEvent(payload, getAccessToken());
+    payload.images.forEach((f) => uploadedFilesRef.current.add(f));
+    setCreatedEvent(saved);
+    return saved;
+  }
+
   async function handleSaveDraft() {
     if (submitting || savingDraft) return;
     setError(null);
@@ -471,12 +488,7 @@ export function CreateEventForm({
     }
     setSavingDraft(true);
     try {
-      if (createdEvent) {
-        await updateEvent(createdEvent.id, buildPayload(), getAccessToken());
-      } else {
-        const created = await createEvent(buildPayload(), getAccessToken());
-        setCreatedEvent(created);
-      }
+      await persistEvent();
       router.push("/organizer/events");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to save draft. Please try again.");
@@ -491,8 +503,7 @@ export function CreateEventForm({
     if (!validateTickets()) return;
     setSubmitting(true);
     try {
-      const created = await createEvent(buildPayload(), getAccessToken());
-      setCreatedEvent(created);
+      await persistEvent();
       setStep(4);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to create event. Please try again.");
