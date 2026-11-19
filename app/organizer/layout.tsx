@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { OrganizerSidebar } from "@/components/organizer/sidebar";
-import { hasSession } from "@/lib/auth";
+import { hasSession, LOGIN_URL } from "@/lib/auth";
 
 export default function OrganizerLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -11,7 +11,7 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     if (!hasSession()) {
-      router.replace("/");
+      router.replace(LOGIN_URL);
       return;
     }
     // Mount-only check of localStorage-backed session state; it can't be
