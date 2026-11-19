@@ -292,7 +292,7 @@ export default function BookingsPage() {
                       <td className="px-5 py-3.5 text-xs text-muted-foreground whitespace-nowrap">{fmtEventDateTime(b.event_date, b.start_time, b.timezone)}</td>
                       */}
                       <td className="px-5 py-3.5 text-xs text-muted-foreground">{formatBookingTicketTypes(b.ticket_types)}</td>
-                      <td className="px-5 py-3.5 text-xs font-semibold text-center">{b.tickets_count}</td>
+                      <td className="px-5 py-3.5 text-xs font-semibold">{b.tickets_count}</td>
                       <td className="px-5 py-3.5 text-xs font-bold">{formatMoney(b.total_amount)}</td>
                       <td className="px-5 py-3.5 text-xs text-muted-foreground whitespace-nowrap">{fmtBookingDate(b.created_at, b.booking_timezone)}</td>
                       <td className="px-5 py-3.5">
