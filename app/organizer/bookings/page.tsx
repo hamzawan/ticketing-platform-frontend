@@ -16,6 +16,8 @@ function getStoredToken(): string | null {
 
 const STATUS_STYLE: Record<string, string> = {
   confirmed: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  paid: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  expired: "bg-slate-100 text-slate-500 border-slate-200",
   cancelled: "bg-red-50 text-red-700 border-red-200",
   pending: "bg-amber-50 text-amber-700 border-amber-200",
 };

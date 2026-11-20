@@ -2,6 +2,7 @@ const STATUS_STYLES: Record<string, string> = {
   "on-sale": "bg-emerald-50 text-emerald-700 border-emerald-200",
   onsale: "bg-emerald-50 text-emerald-700 border-emerald-200",
   draft: "bg-amber-50 text-amber-700 border-amber-200",
+  expired: "bg-slate-100 text-slate-500 border-slate-200",
   ended: "bg-slate-100 text-slate-500 border-slate-200",
   completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
   active: "bg-emerald-50 text-emerald-700 border-emerald-200",
