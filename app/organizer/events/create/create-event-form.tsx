@@ -56,8 +56,12 @@ const lbl = "text-xs font-semibold text-muted-foreground uppercase tracking-wide
 function parseAgeInput(value: string): number | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
-  const n = Number.parseInt(trimmed, 10);
-  return Number.isFinite(n) ? n : null;
+  return /^\d+$/.test(trimmed) ? Number(trimmed) : null;
+}
+
+// Blocks characters that would make an age non-integer or negative (".", "e", "+", "-").
+function blockNonIntegerKeys(e: React.KeyboardEvent<HTMLInputElement>) {
+  if ([".", ",", "e", "E", "+", "-"].includes(e.key)) e.preventDefault();
 }
 
 // The API returns times like "14:47:55.432000"; <input type="time"> only
@@ -353,8 +357,8 @@ export function CreateEventForm({
   else if (!form.timezone) infoErrors.timezone = "Timezone is required.";
   const minAge = parseAgeInput(form.minAge);
   const maxAge = parseAgeInput(form.maxAge);
-  if (form.minAge.trim() && (minAge === null || minAge < 0)) infoErrors.minAge = "Enter a valid age.";
-  if (form.maxAge.trim() && (maxAge === null || maxAge < 0)) infoErrors.maxAge = "Enter a valid age.";
+  if (form.minAge.trim() && (minAge === null || minAge < 1)) infoErrors.minAge = "Enter a whole number greater than 0.";
+  if (form.maxAge.trim() && (maxAge === null || maxAge < 1)) infoErrors.maxAge = "Enter a whole number greater than 0.";
   else if (minAge !== null && maxAge !== null && maxAge < minAge) infoErrors.maxAge = "Max age can't be less than min age.";
   if (!form.address.trim()) infoErrors.address = "Full address is required.";
   if (!form.mapUrl.trim()) infoErrors.map = "Google Maps link is required.";
@@ -710,8 +714,10 @@ export function CreateEventForm({
                     <label className={lbl}>Min Age (optional)</label>
                     <input
                       type="number"
-                      min={0}
+                      min={1}
+                      step={1}
                       value={form.minAge}
+                      onKeyDown={blockNonIntegerKeys}
                       onChange={(e) => setForm((f) => ({ ...f, minAge: e.target.value }))}
                       placeholder="e.g. 3"
                       className={`${inp} ${showErrors[1] && infoErrors.minAge ? "border-red-400!" : ""}`}
@@ -722,8 +728,10 @@ export function CreateEventForm({
                     <label className={lbl}>Max Age (optional)</label>
                     <input
                       type="number"
-                      min={0}
+                      min={1}
+                      step={1}
                       value={form.maxAge}
+                      onKeyDown={blockNonIntegerKeys}
                       onChange={(e) => setForm((f) => ({ ...f, maxAge: e.target.value }))}
                       placeholder="e.g. 12"
                       className={`${inp} ${showErrors[1] && infoErrors.maxAge ? "border-red-400!" : ""}`}
