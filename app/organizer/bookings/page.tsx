@@ -8,6 +8,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pagination } from "@/components/ui/pagination";
 import { Select } from "@/components/ui/select";
+import { TableRowsSkeleton } from "@/components/ui/table-rows-skeleton";
 import { ACCESS_TOKEN_STORAGE_KEY, formatBookingTicketTypes, formatMoney, getBookings, getMyEvents, type BookingsResponse } from "@/lib/api";
 
 function getStoredToken(): string | null {
@@ -235,15 +236,7 @@ export default function BookingsPage() {
       {/* Table */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
         {loadStatus === "loading" ? (
-          <div className="divide-y divide-border" aria-busy="true" aria-label="Loading bookings">
-            {Array.from({ length: 6 }, (_, i) => (
-              <div key={i} className="flex items-center gap-4 px-5 py-4 animate-pulse">
-                <div className="h-3 w-24 rounded bg-secondary" />
-                <div className="h-3 flex-1 rounded bg-secondary" />
-                <div className="h-3 w-20 rounded bg-secondary" />
-              </div>
-            ))}
-          </div>
+          <TableRowsSkeleton label="Loading bookings" />
         ) : loadStatus === "error" ? (
           <LoadError error={loadError} onRetry={() => setReloadKey((k) => k + 1)} />
         ) : paged.length === 0 ? (

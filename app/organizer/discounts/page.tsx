@@ -25,6 +25,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/ui/page-header";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { StatusBadge } from "@/components/ui/badge";
+import { TableRowsSkeleton } from "@/components/ui/table-rows-skeleton";
 
 const INPUT_CLASS =
   "w-full bg-background border border-border rounded-xl px-3 py-2.5 text-base sm:text-sm outline-none focus:border-primary placeholder:text-muted-foreground disabled:opacity-60";
@@ -523,7 +524,7 @@ export default function DiscountsPage() {
           </table>
         </div>
         {loading && !data ? (
-          <p className="p-6 text-sm text-muted-foreground text-center">Loading discounts…</p>
+          <TableRowsSkeleton label="Loading discounts" />
         ) : loadError ? (
           <LoadError error={loadError} onRetry={() => { setLoadError(null); setLoading(true); setReloadKey((k) => k + 1); }} />
         ) : data && data.results.length === 0 ? (

@@ -7,6 +7,7 @@ import { BookOpen, Calendar, ChevronRight, Loader2, MapPin, Plus, Search } from 
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/badge";
 import { EventDetailPanel, getSessions } from "@/components/organizer/event-detail-panel";
+import { EventDetailSkeleton } from "@/components/organizer/event-detail-skeleton";
 import { MyEventsSkeleton } from "@/components/organizer/events-skeleton";
 import {
   ACCESS_TOKEN_STORAGE_KEY,
@@ -277,7 +278,7 @@ export default function MyEventsPage() {
   if (selectedId) {
     return (
       <div className="h-full min-h-0 flex flex-col overflow-hidden">
-        {detailStatus === "loading" && <p className="text-sm text-muted-foreground py-12 text-center">Loading event…</p>}
+        {detailStatus === "loading" && <EventDetailSkeleton />}
         {detailStatus === "error" && (
           <div className="p-6 space-y-4">
             <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-2xl px-4 py-3">Failed to load event details.</div>

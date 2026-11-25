@@ -3,8 +3,8 @@
 import { LoadError } from "@/components/organizer/load-error";
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle, RotateCcw, Search, X, XCircle } from "lucide-react";
+import { TableRowsSkeleton } from "@/components/ui/table-rows-skeleton";
 import { Pagination } from "@/components/ui/pagination";
-import { RefundsSkeleton } from "@/components/organizer/refunds-skeleton";
 import { ACCESS_TOKEN_STORAGE_KEY, getRefundRequests, type RefundRequestsResponse } from "@/lib/api";
 import { RefundsTable } from "./refunds-table";
 
@@ -76,10 +76,6 @@ export default function RefundsPage() {
     setStatusFilter(value);
   }
 
-  if (loadStatus === "loading" && !data) {
-    return <RefundsSkeleton />;
-  }
-
   const q = search.trim().toLowerCase();
   const filtered = data
     ? data.results.filter((r) => !q || r.customer_name.toLowerCase().includes(q) || r.customer_email.toLowerCase().includes(q))
@@ -128,7 +124,9 @@ export default function RefundsPage() {
 
       {/* Table */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        {loadStatus === "error" ? (
+        {loadStatus === "loading" ? (
+          <TableRowsSkeleton label="Loading refund requests" />
+        ) : loadStatus === "error" ? (
           <LoadError error={loadError} onRetry={() => setReloadKey((k) => k + 1)} />
         ) : loadStatus === "ready" && filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">

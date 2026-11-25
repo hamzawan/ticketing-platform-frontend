@@ -1,5 +1,6 @@
 "use client";
 
+import { EventFormSkeleton } from "@/components/organizer/event-form-skeleton";
 import { LoadError } from "@/components/organizer/load-error";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -48,13 +49,7 @@ export default function EditEventPage() {
     };
   }, [id, attempt]);
 
-  if (status === "loading") {
-    return (
-      <div className="p-4 sm:p-6 max-w-2xl">
-        <p className="text-sm text-muted-foreground py-6 text-center">Loading event…</p>
-      </div>
-    );
-  }
+  if (status === "loading") return <EventFormSkeleton />;
 
   if (status === "error") {
     return (
